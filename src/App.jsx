@@ -1,7 +1,7 @@
+import AppRouter from './router/AppRouter.jsx';
+
 function App() {
-  return (
-    <h1>LabTrack App Started</h1>
-  );
+  return <AppRouter />;
 }
 
 export default App;
