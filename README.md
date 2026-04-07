@@ -1,16 +1,83 @@
-# React + Vite
+# LabTrack Front-End
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+LabTrack is a web-based platform designed to manage and streamline programming lab work for both students and instructors. This project represents the **front-end prototype** of the system, developed using **React + Vite**.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Project Overview
 
-## React Compiler
+This project was developed for the **SWE363 (Web Engineering)** course.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+The objective of this milestone is to:
+- Build a fully interactive front-end application
+- Follow and implement the provided Figma design
+- Demonstrate complete user flows and interactions
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Features
+
+- Sign in / Register system
+- Role-based registration (Student / Instructor)
+- Role-based navigation after login
+- Form validation (email + password constraints)
+- Interactive UI components (forms, buttons, tabs)
+- Student dashboard
+- Admin/instructor pages
+- Responsive design using Tailwind CSS
+- Front-end-only logic using localStorage (for demo purposes)
+
+---
+
+## Tech Stack
+
+- React
+- Vite
+- React Router DOM
+- Tailwind CSS
+
+---
+
+## Project Structure
+src/
+assets/
+components/
+layout/
+pages/
+auth/
+student/
+admin/
+router/
+styles/
+App.jsx
+main.jsx
+
+
+---
+
+## Team Members
+
+- Haidar AlDahan  
+- Muhannad AlMelaifi  
+- Hassan Al Henedi  
+- Saif AlSadah  
+
+---
+
+## Notes
+
+- This is a **front-end prototype**, not a full production system
+- Some features are simulated using localStorage
+- Focus is on UI accuracy, interactivity, and user flow
+
+---
+
+## Setup Instructions
+
+See **HOW_TO_USE.md** for full setup and workflow instructions.
+
+---
+
+## License
+
+This project was developed for academic purposes as part of SWE363.
