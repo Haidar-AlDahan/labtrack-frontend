@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import SideBar from "../../components/layout/SideBar";
 import TopBar from "../../components/layout/TopBar";
@@ -221,7 +221,11 @@ export default function LabWorkspacePage() {
     buildInitialFileContents(LAB_DATA.files, LAB_DATA.starterCode),
   );
   const [testResults, setTestResults] = useState(LAB_DATA.testCases);
-  const [consoleOutput, setConsoleOutput] = useState(null);
+  const [consoleTranscript, setConsoleTranscript] = useState("");
+  const [consolePromptInput, setConsolePromptInput] = useState("");
+  const [consolePendingRun, setConsolePendingRun] = useState(null);
+  const consoleRef = useRef(null);
+  const [consoleMeta, setConsoleMeta] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
   const [showSubmit, setShowSubmit] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -350,8 +354,13 @@ export default function LabWorkspacePage() {
 
   const handleRun = () => {
     setIsRunning(true);
-    setConsoleOutput(null);
+    setConsoleTranscript("");
+    setConsolePromptInput("");
+    setConsolePendingRun(null);
+    setConsoleMeta(null);
+
     setTimeout(() => {
+      const providedInput = consolePromptInput.trim();
       const solutionCode = fileContents[primarySolutionFile] ?? "";
       const hasInsert =
         solutionCode.includes("self.root") &&
@@ -377,24 +386,90 @@ export default function LabWorkspacePage() {
       setTestResults(updated);
 
       const fails = updated.filter((r) => r.status === "fail");
-      setConsoleOutput(
-        fails.length > 0
-          ? {
-              isError: true,
-              text: "AssertionError: Expected [1,2,3]\nGot [1,3]\nLine 16, inorder()",
-              time: new Date().toLocaleTimeString(),
-              runtime: "0.043s",
-            }
-          : {
-              isError: false,
-              text: "[3, 5, 7]\nTrue\nFalse\n\nAll visible tests passed! ✓",
-              time: new Date().toLocaleTimeString(),
-              runtime: "0.031s",
-            },
-      );
+      const isError = fails.length > 0;
+      const outputText = isError
+        ? "AssertionError: Expected [1,2,3]\nGot [1,3]\nLine 16, inorder()"
+        : "[3, 5, 7]\nTrue\nFalse\n\nAll visible tests passed! ✓";
+
+      const needsInput =
+        solutionCode.includes("input(") ||
+        solutionCode.includes("sys.stdin") ||
+        solutionCode.includes("stdin");
+
+      if (needsInput) {
+        setConsoleTranscript(">>> ");
+        setConsolePromptInput("");
+        setConsolePendingRun({
+          outputText,
+          isError,
+          time: new Date().toLocaleTimeString(),
+          runtime: isError ? "0.043s" : "0.031s",
+        });
+        setConsoleMeta({
+          isError: false,
+          time: "Waiting for input",
+          runtime: "pending",
+        });
+        setIsRunning(false);
+        return;
+      }
+
+      const inputLine = providedInput ? `>>> ${providedInput}\n` : "";
+      setConsoleTranscript(`${inputLine}${outputText}`);
+      setConsoleMeta({
+        isError,
+        time: new Date().toLocaleTimeString(),
+        runtime: isError ? "0.043s" : "0.031s",
+      });
       setIsRunning(false);
     }, 1400);
   };
+
+  const finalizeConsoleInput = () => {
+    if (!consolePendingRun) return;
+
+    const inputLine = consolePromptInput.trim();
+
+    setConsoleTranscript((currentTranscript) => {
+      const separator = currentTranscript.endsWith(">>> ") ? "" : "\n";
+      return `${currentTranscript}${inputLine}${separator}${consolePendingRun.outputText}`;
+    });
+    setConsoleMeta({
+      isError: consolePendingRun.isError,
+      time: consolePendingRun.time,
+      runtime: consolePendingRun.runtime,
+    });
+    setConsolePendingRun(null);
+    setConsolePromptInput("");
+    setIsRunning(false);
+  };
+
+  const handleConsoleChange = (event) => {
+    if (!consolePendingRun) return;
+
+    const nextValue = event.target.value;
+    if (!nextValue.startsWith(consoleTranscript)) {
+      return;
+    }
+
+    setConsolePromptInput(nextValue.slice(consoleTranscript.length));
+  };
+
+  const handleConsoleKeyDown = (event) => {
+    if (!consolePendingRun) return;
+
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      finalizeConsoleInput();
+    }
+  };
+
+  useEffect(() => {
+    if (!consolePendingRun || !consoleRef.current) return;
+
+    const caret = consoleRef.current.value.length;
+    consoleRef.current.setSelectionRange(caret, caret);
+  }, [consolePendingRun, consoleTranscript, consolePromptInput]);
 
   const handleConfirmSubmit = () => {
     setShowSubmit(false);
@@ -762,8 +837,8 @@ export default function LabWorkspacePage() {
         {/* ── Test Results Panel ── */}
         <div
           style={{
-            width: 290,
-            minWidth: 290,
+            width: 360,
+            minWidth: 360,
             background: bg1,
             borderLeft: `1px solid ${border}`,
             display: "flex",
@@ -794,72 +869,121 @@ export default function LabWorkspacePage() {
             </span>
           </div>
 
-          <div style={{ flex: 1, overflow: "auto" }}>
-            {testResults.map((t) => (
-              <div
-                key={t.name}
+          <div style={{ flex: 1, overflow: "auto", padding: "12px 0" }}>
+            <div style={{ padding: "0 16px 14px" }}>
+              <p
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "9px 16px",
-                  borderBottom: `1px solid #0f1b30`,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: dimmed,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  marginBottom: 8,
                 }}
               >
-                <span
-                  style={{
-                    fontSize: 12,
-                    fontFamily: "monospace",
-                    color:
-                      t.status === "pass"
-                        ? "#4ade80"
+                Test Results
+              </p>
+              <div
+                style={{
+                  border: `1px solid #0f1b30`,
+                  borderRadius: 12,
+                  overflow: "hidden",
+                  background: bg2,
+                }}
+              >
+                {testResults.map((t, index) => (
+                  <div
+                    key={t.name}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "9px 14px",
+                      borderBottom:
+                        index === testResults.length - 1
+                          ? "none"
+                          : `1px solid #0f1b30`,
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontFamily: "monospace",
+                        color:
+                          t.status === "pass"
+                            ? "#4ade80"
+                            : t.status === "fail"
+                              ? "#f87171"
+                              : "#6b7a99",
+                      }}
+                    >
+                      {t.name}
+                    </span>
+                    <span style={{ fontSize: 14 }}>
+                      {t.status === "pass"
+                        ? "✓"
                         : t.status === "fail"
-                          ? "#f87171"
-                          : "#6b7a99",
-                  }}
-                >
-                  {t.name}
-                </span>
-                <span style={{ fontSize: 14 }}>
-                  {t.status === "pass" ? "✓" : t.status === "fail" ? "✗" : "🔒"}
-                </span>
+                          ? "✗"
+                          : "🔒"}
+                    </span>
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
 
-            {consoleOutput && (
-              <div style={{ padding: "14px 16px" }}>
-                <p
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 700,
-                    color: dimmed,
-                    letterSpacing: "0.1em",
-                    textTransform: "uppercase",
-                    marginBottom: 8,
-                  }}
-                >
-                  Output / Error
-                </p>
-                <div
-                  style={{
-                    background: bg0,
-                    borderRadius: 8,
-                    padding: 12,
-                    fontSize: 12,
-                    fontFamily: "monospace",
-                    lineHeight: 1.5,
-                    color: consoleOutput.isError ? "#f87171" : "#4ade80",
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-word",
-                  }}
-                >
-                  {consoleOutput.text}
-                </div>
-              </div>
-            )}
+            <div style={{ padding: "0 16px 14px" }}>
+              <p
+                style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: dimmed,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  marginBottom: 8,
+                }}
+              >
+                Run Details
+              </p>
+              <textarea
+                ref={consoleRef}
+                value={
+                  consolePendingRun
+                    ? `${consoleTranscript}${consolePromptInput}`
+                    : consoleTranscript
+                }
+                onChange={handleConsoleChange}
+                onKeyDown={handleConsoleKeyDown}
+                readOnly={!consolePendingRun}
+                placeholder={
+                  consolePendingRun
+                    ? "Type input and press Enter"
+                    : "Run the lab to see output here."
+                }
+                spellCheck={false}
+                style={{
+                  width: "100%",
+                  minHeight: 260,
+                  padding: 14,
+                  background: bg0,
+                  border: `1px solid ${border}`,
+                  borderRadius: 12,
+                  color: consoleMeta
+                    ? consoleMeta.isError
+                      ? "#f87171"
+                      : "#4ade80"
+                    : "#e2e8f0",
+                  fontSize: 12,
+                  fontFamily: "monospace",
+                  lineHeight: 1.55,
+                  resize: "vertical",
+                  outline: "none",
+                  whiteSpace: "pre-wrap",
+                }}
+              />
+            </div>
           </div>
 
-          {consoleOutput && (
+          {consoleMeta && (
             <div
               style={{
                 padding: "8px 16px 10px",
@@ -879,10 +1003,10 @@ export default function LabWorkspacePage() {
                 Console
               </p>
               <p style={{ fontSize: 11, color: "#6b7a99", margin: "2px 0" }}>
-                Run at {consoleOutput.time}
+                Run at {consoleMeta.time}
               </p>
               <p style={{ fontSize: 11, color: "#6b7a99" }}>
-                Runtime: {consoleOutput.runtime}
+                Runtime: {consoleMeta.runtime}
               </p>
             </div>
           )}
