@@ -527,6 +527,8 @@ export default function LabWorkspacePage() {
       return;
     }
 
+    const shouldPauseForInput = selectedLab.id === 10;
+
     setIsRunning(true);
     setConsoleTranscript("");
     setConsolePromptInput("");
@@ -570,14 +572,15 @@ export default function LabWorkspacePage() {
         sourceCode.includes("sys.stdin") ||
         sourceCode.includes("stdin");
 
-      if (needsInput) {
-        setConsoleTranscript(">>> ");
+      if (needsInput || shouldPauseForInput) {
+        setConsoleTranscript("Enter the starting node:\n>>> ");
         setConsolePromptInput("");
         setConsolePendingRun({
           outputText,
           isError,
           time: new Date().toLocaleTimeString(),
           runtime: isError ? "0.043s" : "0.031s",
+          requiresInput: shouldPauseForInput,
         });
         setConsoleMeta({
           isError: false,
@@ -603,10 +606,13 @@ export default function LabWorkspacePage() {
     if (!consolePendingRun) return;
 
     const inputLine = consolePromptInput.trim();
+    const continuationText = consolePendingRun.requiresInput
+      ? `\nStarting traversal from node ${inputLine || "<no input>"}\n\n${consolePendingRun.outputText}`
+      : consolePendingRun.outputText;
 
     setConsoleTranscript((currentTranscript) => {
       const separator = currentTranscript.endsWith(">>> ") ? "" : "\n";
-      return `${currentTranscript}${inputLine}${separator}${consolePendingRun.outputText}`;
+      return `${currentTranscript}${inputLine}${separator}${continuationText}`;
     });
     setConsoleMeta({
       isError: consolePendingRun.isError,
