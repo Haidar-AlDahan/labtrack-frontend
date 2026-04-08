@@ -31,13 +31,16 @@ export default function SideBar({
           borderRight: `1px solid ${border}`,
           display: "flex",
           flexDirection: "column",
-          padding: "16px 0",
+          padding: 0,
         }}
       >
         <div
           style={{
-            padding: "0 20px 16px",
+            height: 46,
+            padding: "0 20px",
             borderBottom: `1px solid ${border}`,
+            display: "flex",
+            alignItems: "center",
           }}
         >
           <span
@@ -52,7 +55,7 @@ export default function SideBar({
             Navigation
           </span>
         </div>
-        <nav style={{ padding: "8px 0", flex: 1 }}>
+        <nav style={{ padding: "12px 0 8px", flex: 1 }}>
           {[
             { label: "Dashboard", icon: "⊞", path: "/dashboard" },
             { label: "My Labs", icon: "🧪", path: "/labs", active: true },

@@ -477,8 +477,9 @@ export default function LabWorkspacePage() {
     setTimeout(() => navigate("/dashboard"), 2200);
   };
 
-  const passed = testResults.filter((r) => r.status === "pass").length;
-  const visibleTotal = testResults.filter((r) => r.status !== "hidden").length;
+  const visibleTests = testResults.filter((r) => r.status !== "hidden");
+  const passed = visibleTests.filter((r) => r.status === "pass").length;
+  const visibleTotal = visibleTests.length;
   const lines = code.split("\n");
 
   const handleEditorChange = (value) => {
@@ -496,6 +497,7 @@ export default function LabWorkspacePage() {
   const accent = "#22d3ee";
   const muted = "#8898b3";
   const dimmed = "#4a5568";
+  const panelHeaderHeight = 46;
 
   return (
     <div
@@ -536,7 +538,8 @@ export default function LabWorkspacePage() {
         >
           <div
             style={{
-              padding: "12px",
+              height: panelHeaderHeight,
+              padding: "0 12px",
               display: "flex",
               alignItems: "center",
               justifyContent: descCollapsed ? "center" : "space-between",
@@ -634,6 +637,8 @@ export default function LabWorkspacePage() {
           <div
             style={{
               display: "flex",
+              minHeight: panelHeaderHeight,
+              alignItems: "stretch",
               borderBottom: `1px solid ${border}`,
               background: bg1,
             }}
@@ -649,7 +654,8 @@ export default function LabWorkspacePage() {
                   autoFocus
                   style={{
                     width: 180,
-                    padding: "10px 14px",
+                    height: panelHeaderHeight,
+                    padding: "0 14px",
                     fontSize: 12,
                     background: bg2,
                     borderBottom: `2px solid ${accent}`,
@@ -674,7 +680,8 @@ export default function LabWorkspacePage() {
                       f === activeFile ? beginRenamePage(f) : setActiveFile(f)
                     }
                     style={{
-                      padding: "10px 20px",
+                      height: panelHeaderHeight,
+                      padding: "0 20px",
                       fontSize: 12,
                       background: "none",
                       borderBottom:
@@ -728,7 +735,8 @@ export default function LabWorkspacePage() {
                 placeholder="Page name"
                 style={{
                   width: 180,
-                  padding: "10px 14px",
+                  height: panelHeaderHeight,
+                  padding: "0 14px",
                   fontSize: 12,
                   background: bg2,
                   borderBottom: `2px solid ${accent}`,
@@ -743,7 +751,8 @@ export default function LabWorkspacePage() {
                 aria-label="Add page"
                 style={{
                   width: 40,
-                  padding: "10px 0",
+                  height: panelHeaderHeight,
+                  padding: 0,
                   fontSize: 16,
                   background: "none",
                   borderBottom: "2px solid transparent",
@@ -848,7 +857,8 @@ export default function LabWorkspacePage() {
         >
           <div
             style={{
-              padding: "14px 16px 12px",
+              height: panelHeaderHeight,
+              padding: "0 16px",
               borderBottom: `1px solid ${border}`,
               display: "flex",
               alignItems: "center",
@@ -891,7 +901,7 @@ export default function LabWorkspacePage() {
                   background: bg2,
                 }}
               >
-                {testResults.map((t, index) => (
+                {visibleTests.map((t, index) => (
                   <div
                     key={t.name}
                     style={{
@@ -900,7 +910,7 @@ export default function LabWorkspacePage() {
                       justifyContent: "space-between",
                       padding: "9px 14px",
                       borderBottom:
-                        index === testResults.length - 1
+                        index === visibleTests.length - 1
                           ? "none"
                           : `1px solid #0f1b30`,
                     }}
@@ -920,11 +930,7 @@ export default function LabWorkspacePage() {
                       {t.name}
                     </span>
                     <span style={{ fontSize: 14 }}>
-                      {t.status === "pass"
-                        ? "✓"
-                        : t.status === "fail"
-                          ? "✗"
-                          : "🔒"}
+                      {t.status === "pass" ? "✓" : "✗"}
                     </span>
                   </div>
                 ))}
@@ -942,7 +948,7 @@ export default function LabWorkspacePage() {
                   marginBottom: 8,
                 }}
               >
-                Run Details
+                Output
               </p>
               <textarea
                 ref={consoleRef}
@@ -962,7 +968,7 @@ export default function LabWorkspacePage() {
                 spellCheck={false}
                 style={{
                   width: "100%",
-                  minHeight: 260,
+                  minHeight: 240,
                   padding: 14,
                   background: bg0,
                   border: `1px solid ${border}`,
@@ -978,38 +984,51 @@ export default function LabWorkspacePage() {
                   resize: "vertical",
                   outline: "none",
                   whiteSpace: "pre-wrap",
+                  overflowY: "auto",
+                  overflowX: "hidden",
                 }}
               />
             </div>
           </div>
 
-          {consoleMeta && (
-            <div
+          <div
+            style={{
+              padding: "8px 16px 10px",
+              borderTop: `1px solid ${border}`,
+            }}
+          >
+            <p
               style={{
-                padding: "8px 16px 10px",
-                borderTop: `1px solid ${border}`,
+                fontSize: 10,
+                fontWeight: 700,
+                color: dimmed,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                marginBottom: 4,
               }}
             >
-              <p
-                style={{
-                  fontSize: 10,
-                  fontWeight: 700,
-                  color: dimmed,
-                  letterSpacing: "0.1em",
-                  textTransform: "uppercase",
-                  marginBottom: 4,
-                }}
-              >
-                Console
-              </p>
-              <p style={{ fontSize: 11, color: "#6b7a99", margin: "2px 0" }}>
-                Run at {consoleMeta.time}
-              </p>
-              <p style={{ fontSize: 11, color: "#6b7a99" }}>
-                Runtime: {consoleMeta.runtime}
-              </p>
-            </div>
-          )}
+              Run Details
+            </p>
+            <p
+              style={{
+                fontSize: 11,
+                color: "#6b7a99",
+                margin: "2px 0",
+                visibility: consoleMeta ? "visible" : "hidden",
+              }}
+            >
+              Run at {consoleMeta?.time ?? "--"}
+            </p>
+            <p
+              style={{
+                fontSize: 11,
+                color: "#6b7a99",
+                visibility: consoleMeta ? "visible" : "hidden",
+              }}
+            >
+              Runtime: {consoleMeta?.runtime ?? "--"}
+            </p>
+          </div>
 
           {/* Buttons */}
           <div
