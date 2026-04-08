@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import SideBar from "../../components/layout/SideBar";
+import TopBar from "../../components/layout/TopBar";
 
 // ─── Sample Lab Data ─────────────────────────────────────────────────────────
 const LAB_DATA = {
@@ -137,12 +139,6 @@ function tokenize(text) {
       );
     return <span key={i}>{tok}</span>;
   });
-}
-
-function fileIcon(name) {
-  if (name.endsWith(".py")) return "🐍";
-  if (name.endsWith(".md")) return "📄";
-  return "📋";
 }
 
 function buildInitialFileContents(files, starterCode) {
@@ -438,190 +434,18 @@ export default function LabWorkspacePage() {
         overflow: "hidden",
       }}
     >
-      {/* ── Top Bar ── */}
-      <header
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0 24px",
-          height: 52,
-          background: bg1,
-          borderBottom: `1px solid ${border}`,
-          flexShrink: 0,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <button
-            onClick={() => navigate("/dashboard")}
-            style={{
-              background: "none",
-              border: "none",
-              color: accent,
-              fontSize: 18,
-              fontWeight: 700,
-              cursor: "pointer",
-              letterSpacing: "-0.5px",
-            }}
-          >
-            LabTrack
-          </button>
-          <span style={{ color: border, fontSize: 18 }}>›</span>
-          <span style={{ fontSize: 14, fontWeight: 600, color: "#e2e8f0" }}>
-            {LAB_DATA.title}
-          </span>
-        </div>
-        <span style={{ fontSize: 11, color: dimmed }}>
-          {lastSaved ? `Last saved at ${lastSaved}` : "Auto-saves every 30s"}
-        </span>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span
-            style={{
-              background: bg2,
-              border: `1px solid ${border}`,
-              borderRadius: 20,
-              padding: "4px 12px",
-              fontSize: 12,
-              color: muted,
-            }}
-          >
-            {LAB_DATA.course}
-          </span>
-          <div
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: "50%",
-              background: "linear-gradient(135deg,#22d3ee,#0369a1)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 13,
-              fontWeight: 700,
-              color: "#fff",
-              cursor: "pointer",
-            }}
-          >
-            M
-          </div>
-        </div>
-      </header>
+      <TopBar
+        title={LAB_DATA.title}
+        lastSaved={lastSaved}
+        course={LAB_DATA.course}
+      />
 
       {/* ── Body ── */}
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        {/* ── Left Nav ── */}
-        <aside
-          style={{
-            width: 188,
-            minWidth: 188,
-            background: bg1,
-            borderRight: `1px solid ${border}`,
-            display: "flex",
-            flexDirection: "column",
-            padding: "16px 0",
-          }}
-        >
-          <div
-            style={{
-              padding: "0 20px 16px",
-              borderBottom: `1px solid ${border}`,
-            }}
-          >
-            <span
-              style={{
-                fontSize: 10,
-                fontWeight: 700,
-                color: dimmed,
-                letterSpacing: "0.1em",
-                textTransform: "uppercase",
-              }}
-            >
-              Navigation
-            </span>
-          </div>
-          <nav style={{ padding: "8px 0", flex: 1 }}>
-            {[
-              { label: "Dashboard", icon: "⊞", path: "/dashboard" },
-              { label: "My Labs", icon: "🧪", path: "/labs", active: true },
-              { label: "Peer Review", icon: "👁", path: "/peer-review" },
-              { label: "Grades", icon: "📊", path: "/grades" },
-              { label: "History", icon: "🕐", path: "/history" },
-            ].map((item) => (
-              <button
-                key={item.label}
-                onClick={() => navigate(item.path)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  width: "100%",
-                  padding: "9px 20px",
-                  background: item.active ? "#0d1e3a" : "none",
-                  borderLeft: item.active
-                    ? `2px solid ${accent}`
-                    : "2px solid transparent",
-                  border: "none",
-                  borderRight: "none",
-                  borderTop: "none",
-                  borderBottom: "none",
-                  color: item.active ? "#e2e8f0" : muted,
-                  fontSize: 13,
-                  fontWeight: 500,
-                  cursor: "pointer",
-                  textAlign: "left",
-                }}
-              >
-                <span style={{ fontSize: 14 }}>{item.icon}</span>
-                {item.label}
-              </button>
-            ))}
-          </nav>
-          {/* Files */}
-          <div style={{ borderTop: `1px solid ${border}`, padding: "12px 0" }}>
-            <p
-              style={{
-                fontSize: 10,
-                fontWeight: 700,
-                color: dimmed,
-                letterSpacing: "0.1em",
-                padding: "0 20px 8px",
-                textTransform: "uppercase",
-              }}
-            >
-              Files
-            </p>
-            {LAB_DATA.files.map((f) => (
-              <button
-                key={f}
-                onClick={() => setActiveFile(f)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  width: "100%",
-                  padding: "6px 20px",
-                  background: activeFile === f ? "#0d1e3a" : "none",
-                  borderLeft:
-                    activeFile === f
-                      ? `2px solid ${accent}`
-                      : "2px solid transparent",
-                  border: "none",
-                  borderRight: "none",
-                  borderTop: "none",
-                  borderBottom: "none",
-                  color: activeFile === f ? "#e2e8f0" : "#6b7a99",
-                  fontSize: 12,
-                  cursor: "pointer",
-                  textAlign: "left",
-                }}
-              >
-                <span style={{ fontSize: 13 }}>{fileIcon(f)}</span>
-                {f}
-              </button>
-            ))}
-          </div>
-        </aside>
-
+      <SideBar
+        files={files}
+        activeFile={activeFile}
+        onFileSelect={setActiveFile}
+      >
         {/* ── Description Panel ── */}
         <div
           style={{
@@ -1107,7 +931,7 @@ export default function LabWorkspacePage() {
             </button>
           </div>
         </div>
-      </div>
+      </SideBar>
 
       {/* ── Submit Modal ── */}
       {showSubmit && (
