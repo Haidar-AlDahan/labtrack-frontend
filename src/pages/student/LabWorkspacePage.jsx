@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import SideBar from "../../components/layout/SideBar";
 import TopBar from "../../components/layout/TopBar";
 
@@ -37,19 +37,19 @@ class BinaryTree:
 
     def insert(self, val):
         # TODO: implement insert
-        pass
+        
 
     def search(self, val):
         # TODO: implement search
-        pass
+        
 
     def inorder(self, node=None):
         # TODO: implement inorder traversal
-        pass
+        
 
     def delete(self, val):
         # TODO: implement delete
-        pass
+        
 
 
 # Test your implementation here
@@ -71,6 +71,124 @@ if __name__ == "__main__":
     { name: "test_delete_leaf", status: "hidden", points: 20 },
     { name: "test_delete_node", status: "hidden", points: 20 },
   ],
+};
+
+const LAB_DATA_BY_ID = {
+  9: LAB_DATA,
+  10: {
+    id: 10,
+    title: "Lab 10 — Graph Traversal",
+    course: "ICS 202 - SEC 03",
+    language: "Python",
+    dueDate: "Apr 19, 2026",
+    description: `Implement graph traversal methods for an adjacency-list graph.
+
+Your Graph class must support:
+  1. add_edge(u, v)  — Add a directed edge
+  2. bfs(start)      — Breadth-first traversal order
+  3. dfs(start)      — Depth-first traversal order
+
+Constraints:
+  • Use collections.deque for BFS queue
+  • Do not use recursion for BFS
+  • Return traversal as a list`,
+    starterCode: `# Graph Traversal Implementation
+# ICS 202 - Lab 10
+
+from collections import deque
+
+class Graph:
+    def __init__(self):
+        self.adj = {}
+
+    def add_edge(self, u, v):
+        # TODO: implement add_edge
+        pass
+
+    def bfs(self, start):
+        # TODO: implement bfs traversal
+        pass
+
+    def dfs(self, start):
+        # TODO: implement dfs traversal
+        pass
+
+
+if __name__ == "__main__":
+    g = Graph()
+    g.add_edge("A", "B")
+    g.add_edge("A", "C")
+    g.add_edge("B", "D")
+    print(g.bfs("A"))   # Expected: ["A", "B", "C", "D"]
+    print(g.dfs("A"))   # Example: ["A", "B", "D", "C"]
+`,
+    files: ["solution.py", "graph_utils.py", "tests.py", "README.md"],
+    testCases: [
+      { name: "test_add_edge", status: "pass", points: 10 },
+      { name: "test_bfs_order", status: "fail", points: 20 },
+      { name: "test_dfs_order", status: "fail", points: 20 },
+      { name: "test_disconnected_graph", status: "hidden", points: 25 },
+      { name: "test_cycle_graph", status: "hidden", points: 25 },
+    ],
+  },
+  11: {
+    id: 11,
+    title: "Lab 11 — Hash Tables",
+    course: "ICS 202 - SEC 03",
+    language: "Python",
+    dueDate: "Apr 26, 2026",
+    description: `Build a hash table using chaining.
+
+Your HashTable class must support:
+  1. put(key, value)     — Insert or update key
+  2. get(key)            — Return value for key or None
+  3. remove(key)         — Delete key if it exists
+
+Constraints:
+  • Implement your own hash function
+  • Handle collisions via list chaining
+  • Avoid Python dict for storage`,
+    starterCode: `# Hash Table Implementation
+# ICS 202 - Lab 11
+
+class HashTable:
+    def __init__(self, capacity=10):
+        self.capacity = capacity
+        self.buckets = [[] for _ in range(capacity)]
+
+    def _hash(self, key):
+        # TODO: implement hash function
+        pass
+
+    def put(self, key, value):
+        # TODO: implement put
+        pass
+
+    def get(self, key):
+        # TODO: implement get
+        pass
+
+    def remove(self, key):
+        # TODO: implement remove
+        pass
+
+
+if __name__ == "__main__":
+    ht = HashTable()
+    ht.put("name", "Lina")
+    print(ht.get("name"))  # Expected: Lina
+    ht.remove("name")
+    print(ht.get("name"))  # Expected: None
+`,
+    files: ["solution.py", "hash_helpers.py", "tests.py", "README.md"],
+    testCases: [
+      { name: "test_put_insert", status: "pass", points: 10 },
+      { name: "test_get_existing", status: "fail", points: 20 },
+      { name: "test_remove_key", status: "fail", points: 20 },
+      { name: "test_collision_chain", status: "hidden", points: 25 },
+      { name: "test_update_existing", status: "hidden", points: 25 },
+    ],
+  },
 };
 
 const KEYWORDS = [
@@ -98,6 +216,20 @@ const KEYWORDS = [
   "len",
   "append",
 ];
+
+const RUNNABLE_EXTENSIONS_BY_LANGUAGE = {
+  python: ["py"],
+  javascript: ["js"],
+  typescript: ["ts"],
+  java: ["java"],
+  c: ["c"],
+  "c++": ["cpp", "cc", "cxx"],
+};
+
+function getFileExtension(fileName) {
+  const parts = fileName.toLowerCase().split(".");
+  return parts.length > 1 ? parts[parts.length - 1] : "";
+}
 
 function syntaxHighlight(line) {
   const commentIdx = line.indexOf("#");
@@ -206,21 +338,28 @@ function resolveUniqueFileName(candidateName, existingNames, currentName) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function LabWorkspacePage() {
   const navigate = useNavigate();
+  const { labId } = useParams();
+  const selectedLab = LAB_DATA_BY_ID[Number(labId)] ?? LAB_DATA;
+  const currentLabId = String(selectedLab.id);
+  const titleSuffix = selectedLab.title.includes("—")
+    ? selectedLab.title.split("—").slice(1).join("—").trim()
+    : selectedLab.title;
+  const pageTitle = `Lab ${currentLabId} — ${titleSuffix}`;
   const initialSolutionFile =
-    LAB_DATA.files.find(
+    selectedLab.files.find(
       (f) =>
         f.toLowerCase().includes("solution") && f.toLowerCase().endsWith(".py"),
-    ) || LAB_DATA.files[0];
-  const [files, setFiles] = useState(LAB_DATA.files);
+    ) || selectedLab.files[0];
+  const [files, setFiles] = useState(selectedLab.files);
   const [activeFile, setActiveFile] = useState(() => {
     return initialSolutionFile;
   });
   const [primarySolutionFile, setPrimarySolutionFile] =
     useState(initialSolutionFile);
   const [fileContents, setFileContents] = useState(() =>
-    buildInitialFileContents(LAB_DATA.files, LAB_DATA.starterCode),
+    buildInitialFileContents(selectedLab.files, selectedLab.starterCode),
   );
-  const [testResults, setTestResults] = useState(LAB_DATA.testCases);
+  const [testResults, setTestResults] = useState(selectedLab.testCases);
   const [consoleTranscript, setConsoleTranscript] = useState("");
   const [consolePromptInput, setConsolePromptInput] = useState("");
   const [consolePendingRun, setConsolePendingRun] = useState(null);
@@ -245,6 +384,27 @@ export default function LabWorkspacePage() {
     );
     return () => clearInterval(iv);
   }, []);
+
+  useEffect(() => {
+    const nextSolutionFile =
+      selectedLab.files.find(
+        (f) =>
+          f.toLowerCase().includes("solution") &&
+          f.toLowerCase().endsWith(".py"),
+      ) || selectedLab.files[0];
+
+    setFiles(selectedLab.files);
+    setActiveFile(nextSolutionFile);
+    setPrimarySolutionFile(nextSolutionFile);
+    setFileContents(
+      buildInitialFileContents(selectedLab.files, selectedLab.starterCode),
+    );
+    setTestResults(selectedLab.testCases);
+    setConsoleTranscript("");
+    setConsolePromptInput("");
+    setConsolePendingRun(null);
+    setConsoleMeta(null);
+  }, [selectedLab]);
 
   const code = fileContents[activeFile] ?? "";
 
@@ -353,6 +513,20 @@ export default function LabWorkspacePage() {
   };
 
   const handleRun = () => {
+    if (!isActiveFileRunnable) {
+      setConsoleTranscript(
+        `Cannot run ${activeFile}. This lab only supports ${supportedExtensions.map((ext) => `.${ext}`).join(", ")} files.`,
+      );
+      setConsolePromptInput("");
+      setConsolePendingRun(null);
+      setConsoleMeta({
+        isError: true,
+        time: new Date().toLocaleTimeString(),
+        runtime: "0.000s",
+      });
+      return;
+    }
+
     setIsRunning(true);
     setConsoleTranscript("");
     setConsolePromptInput("");
@@ -360,16 +534,16 @@ export default function LabWorkspacePage() {
     setConsoleMeta(null);
 
     setTimeout(() => {
-      const providedInput = consolePromptInput.trim();
-      const solutionCode = fileContents[primarySolutionFile] ?? "";
+      const providedInput = "";
+      const sourceCode = fileContents[activeFile] ?? "";
       const hasInsert =
-        solutionCode.includes("self.root") &&
-        !solutionCode.includes("# TODO: implement insert");
+        sourceCode.includes("self.root") &&
+        !sourceCode.includes("# TODO: implement insert");
       const hasSearch =
-        solutionCode.includes("def search") &&
-        !solutionCode.includes("# TODO: implement search");
+        sourceCode.includes("def search") &&
+        !sourceCode.includes("# TODO: implement search");
       const hasInorder =
-        solutionCode.includes("append") && solutionCode.includes("inorder");
+        sourceCode.includes("append") && sourceCode.includes("inorder");
 
       const updated = testResults.map((t) => {
         if (t.status === "hidden") return t;
@@ -392,9 +566,9 @@ export default function LabWorkspacePage() {
         : "[3, 5, 7]\nTrue\nFalse\n\nAll visible tests passed! ✓";
 
       const needsInput =
-        solutionCode.includes("input(") ||
-        solutionCode.includes("sys.stdin") ||
-        solutionCode.includes("stdin");
+        sourceCode.includes("input(") ||
+        sourceCode.includes("sys.stdin") ||
+        sourceCode.includes("stdin");
 
       if (needsInput) {
         setConsoleTranscript(">>> ");
@@ -480,6 +654,11 @@ export default function LabWorkspacePage() {
   const visibleTests = testResults.filter((r) => r.status !== "hidden");
   const passed = visibleTests.filter((r) => r.status === "pass").length;
   const visibleTotal = visibleTests.length;
+  const supportedExtensions =
+    RUNNABLE_EXTENSIONS_BY_LANGUAGE[selectedLab.language.toLowerCase()] ?? [];
+  const activeFileExtension = getFileExtension(activeFile);
+  const isActiveFileRunnable =
+    supportedExtensions.includes(activeFileExtension);
   const lines = code.split("\n");
 
   const handleEditorChange = (value) => {
@@ -512,9 +691,9 @@ export default function LabWorkspacePage() {
       }}
     >
       <TopBar
-        title={LAB_DATA.title}
+        title={pageTitle}
         lastSaved={lastSaved}
-        course={LAB_DATA.course}
+        course={selectedLab.course}
       />
 
       {/* ── Body ── */}
@@ -593,7 +772,7 @@ export default function LabWorkspacePage() {
                     color: "#f59e0b",
                   }}
                 >
-                  ⏰ Due: {LAB_DATA.dueDate}
+                  ⏰ Due: {selectedLab.dueDate}
                 </span>
                 <span
                   style={{
@@ -604,7 +783,7 @@ export default function LabWorkspacePage() {
                     color: accent,
                   }}
                 >
-                  🐍 {LAB_DATA.language}
+                  🐍 {selectedLab.language}
                 </span>
               </div>
               <pre
@@ -617,7 +796,7 @@ export default function LabWorkspacePage() {
                   margin: 0,
                 }}
               >
-                {LAB_DATA.description}
+                {selectedLab.description}
               </pre>
             </div>
           )}
@@ -963,7 +1142,9 @@ export default function LabWorkspacePage() {
                 placeholder={
                   consolePendingRun
                     ? "Type input and press Enter"
-                    : "Run the lab to see output here."
+                    : isActiveFileRunnable
+                      ? "Run the lab to see output here."
+                      : `Select a ${selectedLab.language} source file to run.`
                 }
                 spellCheck={false}
                 style={{
@@ -1041,17 +1222,26 @@ export default function LabWorkspacePage() {
           >
             <button
               onClick={handleRun}
-              disabled={isRunning}
+              disabled={isRunning || !isActiveFileRunnable}
+              title={
+                isActiveFileRunnable
+                  ? "Run active file"
+                  : `Running is only available for ${supportedExtensions.map((ext) => `.${ext}`).join(", ")} files.`
+              }
               style={{
                 flex: 1,
                 padding: "10px 0",
-                background: isRunning ? "#1a2540" : "#16a34a",
+                background:
+                  isRunning || !isActiveFileRunnable ? "#1a2540" : "#16a34a",
                 border: "none",
                 borderRadius: 8,
                 color: "#fff",
                 fontSize: 13,
                 fontWeight: 600,
-                cursor: isRunning ? "not-allowed" : "pointer",
+                cursor:
+                  isRunning || !isActiveFileRunnable
+                    ? "not-allowed"
+                    : "pointer",
               }}
             >
               {isRunning ? "Running…" : "▶  Run"}
@@ -1107,7 +1297,7 @@ export default function LabWorkspacePage() {
                 marginBottom: 8,
               }}
             >
-              Submit Lab 9?
+              Submit Lab {selectedLab.id}?
             </h2>
             <p style={{ fontSize: 13, color: muted, marginBottom: 20 }}>
               Current score:{" "}

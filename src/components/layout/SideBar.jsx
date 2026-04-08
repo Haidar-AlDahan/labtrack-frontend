@@ -1,4 +1,5 @@
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 function fileIcon(name) {
   if (name.endsWith(".py")) return "🐍";
@@ -13,6 +14,16 @@ export default function SideBar({
   onFileSelect = null,
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [hoveredNav, setHoveredNav] = useState(null);
+
+  const navItems = [
+    { label: "Dashboard", icon: "🧭", path: "/dashboard" },
+    { label: "My Labs", icon: "🧪", path: "/labs", matchPaths: ["/labs"] },
+    { label: "Peer Review", icon: "💬", path: "/peer-review" },
+    { label: "Grades", icon: "📊", path: "/grades" },
+    { label: "History", icon: "🕐", path: "/history" },
+  ];
 
   const bg1 = "#080f1e";
   const border = "#1a2540";
@@ -55,42 +66,47 @@ export default function SideBar({
             Navigation
           </span>
         </div>
-        <nav style={{ padding: "12px 0 8px", flex: 1 }}>
-          {[
-            { label: "Dashboard", icon: "⊞", path: "/dashboard" },
-            { label: "My Labs", icon: "🧪", path: "/labs", active: true },
-            { label: "Peer Review", icon: "👁", path: "/peer-review" },
-            { label: "Grades", icon: "📊", path: "/grades" },
-            { label: "History", icon: "🕐", path: "/history" },
-          ].map((item) => (
-            <button
-              key={item.label}
-              onClick={() => navigate(item.path)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                width: "100%",
-                padding: "9px 20px",
-                background: item.active ? "#0d1e3a" : "none",
-                borderLeft: item.active
-                  ? `2px solid ${accent}`
-                  : "2px solid transparent",
-                border: "none",
-                borderRight: "none",
-                borderTop: "none",
-                borderBottom: "none",
-                color: item.active ? "#e2e8f0" : muted,
-                fontSize: 13,
-                fontWeight: 500,
-                cursor: "pointer",
-                textAlign: "left",
-              }}
-            >
-              <span style={{ fontSize: 14 }}>{item.icon}</span>
-              {item.label}
-            </button>
-          ))}
+        <nav
+          style={{ padding: "12px 0 8px", flex: 1 }}
+          onMouseLeave={() => setHoveredNav(null)}
+        >
+          {navItems.map((item) => {
+            const matchedPaths = item.matchPaths ?? [item.path];
+            const isActive = matchedPaths.some(
+              (path) =>
+                location.pathname === path ||
+                location.pathname.startsWith(`${path}/`),
+            );
+            const isHighlighted = isActive || hoveredNav === item.label;
+
+            return (
+              <button
+                key={item.label}
+                onClick={() => navigate(item.path)}
+                onMouseEnter={() => setHoveredNav(item.label)}
+                onMouseLeave={() => setHoveredNav(null)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  width: "100%",
+                  boxSizing: "border-box",
+                  padding: "9px 20px",
+                  background: isHighlighted ? "#0d1e3a" : "none",
+                  border: "none",
+                  borderLeft: `2px solid ${isHighlighted ? accent : "transparent"}`,
+                  color: isHighlighted ? "#e2e8f0" : muted,
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  textAlign: "left",
+                }}
+              >
+                <span style={{ fontSize: 14 }}>{item.icon}</span>
+                {item.label}
+              </button>
+            );
+          })}
         </nav>
 
         {/* Files (optional) */}
