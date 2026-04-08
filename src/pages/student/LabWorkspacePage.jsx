@@ -183,10 +183,10 @@ if __name__ == "__main__":
     files: ["solution.py", "hash_helpers.py", "tests.py", "README.md"],
     testCases: [
       { name: "test_put_insert", status: "pass", points: 10 },
-      { name: "test_get_existing", status: "fail", points: 20 },
-      { name: "test_remove_key", status: "fail", points: 20 },
-      { name: "test_collision_chain", status: "hidden", points: 25 },
-      { name: "test_update_existing", status: "hidden", points: 25 },
+      { name: "test_get_existing", status: "pass", points: 20 },
+      { name: "test_remove_key", status: "pass", points: 20 },
+      { name: "test_collision_chain", status: "pass", points: 25 },
+      { name: "test_update_existing", status: "pass", points: 25 },
     ],
   },
 };
@@ -1195,19 +1195,20 @@ export default function LabWorkspacePage() {
                 fontSize: 11,
                 color: "#6b7a99",
                 margin: "2px 0",
-                visibility: consoleMeta ? "visible" : "hidden",
               }}
             >
-              Run at {consoleMeta?.time ?? "--"}
+              {consoleMeta
+                ? `Run at ${consoleMeta.time}`
+                : "Click Run to check details."}
             </p>
             <p
               style={{
                 fontSize: 11,
                 color: "#6b7a99",
-                visibility: consoleMeta ? "visible" : "hidden",
+                minHeight: 16,
               }}
             >
-              Runtime: {consoleMeta?.runtime ?? "--"}
+              {consoleMeta ? `Runtime: ${consoleMeta.runtime}` : ""}
             </p>
           </div>
 
