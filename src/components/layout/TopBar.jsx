@@ -5,8 +5,7 @@ function TopBar() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
-  const currentUser =
-    JSON.parse(localStorage.getItem("currentUser")) || {};
+  const currentUser = JSON.parse(localStorage.getItem("currentUser")) || {};
 
   const handleLogout = () => {
     localStorage.removeItem("currentUser");
