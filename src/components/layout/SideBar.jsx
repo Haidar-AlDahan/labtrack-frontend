@@ -8,10 +8,10 @@ function fileIcon(name) {
 }
 
 export default function SideBar({
-  children,
   files = null,
   activeFile = null,
   onFileSelect = null,
+  children = null,
 }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -30,135 +30,188 @@ export default function SideBar({
   const accent = "#22d3ee";
   const muted = "#8898b3";
   const dimmed = "#4a5568";
-
-  return (
-    <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-      {/* ── Left Nav ── */}
-      <aside
+  const sidebar = (
+    <aside
+      style={{
+        width: 264,
+        minWidth: 264,
+        background:
+          "linear-gradient(180deg, rgba(8,15,30,1) 0%, rgba(11,20,36,1) 100%)",
+        borderRight: `1px solid ${border}`,
+        display: "flex",
+        flexDirection: "column",
+        boxShadow: "inset -1px 0 0 rgba(255,255,255,0.02)",
+      }}
+    >
+      <div
         style={{
-          width: 188,
-          minWidth: 188,
-          background: bg1,
-          borderRight: `1px solid ${border}`,
+          padding: "20px 24px 18px",
+          borderBottom: `1px solid ${border}`,
           display: "flex",
           flexDirection: "column",
-          padding: 0,
+          gap: 8,
         }}
       >
-        <div
+        <span
           style={{
-            height: 46,
-            padding: "0 20px",
-            borderBottom: `1px solid ${border}`,
-            display: "flex",
-            alignItems: "center",
+            fontSize: 11,
+            fontWeight: 700,
+            color: dimmed,
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
           }}
         >
-          <span
+          Navigation
+        </span>
+        <div>
+          <div
             style={{
-              fontSize: 10,
+              fontSize: 18,
               fontWeight: 700,
-              color: dimmed,
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
+              color: "#e2e8f0",
             }}
           >
-            Navigation
-          </span>
+            LabTrack
+          </div>
+          <div
+            style={{
+              marginTop: 4,
+              fontSize: 12,
+              color: muted,
+            }}
+          >
+            Student workspace
+          </div>
         </div>
-        <nav
-          style={{ padding: "12px 0 8px", flex: 1 }}
-          onMouseLeave={() => setHoveredNav(null)}
-        >
-          {navItems.map((item) => {
-            const matchedPaths = item.matchPaths ?? [item.path];
-            const isActive = matchedPaths.some(
-              (path) =>
-                location.pathname === path ||
-                location.pathname.startsWith(`${path}/`),
-            );
-            const isHighlighted = isActive || hoveredNav === item.label;
+      </div>
 
-            return (
-              <button
-                key={item.label}
-                onClick={() => navigate(item.path)}
-                onMouseEnter={() => setHoveredNav(item.label)}
-                onMouseLeave={() => setHoveredNav(null)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  width: "100%",
-                  boxSizing: "border-box",
-                  padding: "9px 20px",
-                  background: isHighlighted ? "#0d1e3a" : "none",
-                  border: "none",
-                  borderLeft: `2px solid ${isHighlighted ? accent : "transparent"}`,
-                  color: isHighlighted ? "#e2e8f0" : muted,
-                  fontSize: 13,
-                  fontWeight: 500,
-                  cursor: "pointer",
-                  textAlign: "left",
-                }}
-              >
-                <span style={{ fontSize: 14 }}>{item.icon}</span>
-                {item.label}
-              </button>
-            );
-          })}
-        </nav>
+      <nav
+        style={{ padding: "16px 14px", flex: 1 }}
+        onMouseLeave={() => setHoveredNav(null)}
+      >
+        {navItems.map((item) => {
+          const matchedPaths = item.matchPaths ?? [item.path];
+          const isActive = matchedPaths.some(
+            (path) =>
+              location.pathname === path ||
+              location.pathname.startsWith(`${path}/`),
+          );
 
-        {/* Files (optional) */}
-        {files && files.length > 0 && (
-          <div style={{ borderTop: `1px solid ${border}`, padding: "12px 0" }}>
-            <p
+          const isHighlighted = isActive || hoveredNav === item.label;
+
+          return (
+            <button
+              key={item.label}
+              onClick={() => navigate(item.path)}
+              onMouseEnter={() => setHoveredNav(item.label)}
+              onMouseLeave={() => setHoveredNav(null)}
               style={{
-                fontSize: 10,
-                fontWeight: 700,
-                color: dimmed,
-                letterSpacing: "0.1em",
-                padding: "0 20px 8px",
-                textTransform: "uppercase",
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                width: "100%",
+                marginBottom: 6,
+                padding: "12px 14px",
+                background: isHighlighted ? "#10213f" : "transparent",
+                border: `1px solid ${isHighlighted ? "#1e3a5f" : "transparent"}`,
+                borderRadius: 14,
+                color: isHighlighted ? "#e2e8f0" : muted,
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: "pointer",
+                textAlign: "left",
+                transition: "all 0.2s ease",
               }}
             >
-              Files
-            </p>
-            {files.map((f) => (
-              <button
-                key={f}
-                onClick={() => onFileSelect && onFileSelect(f)}
+              <span
                 style={{
-                  display: "flex",
+                  width: 28,
+                  height: 28,
+                  borderRadius: 10,
+                  display: "inline-flex",
                   alignItems: "center",
-                  gap: 8,
-                  width: "100%",
-                  padding: "6px 20px",
-                  background: activeFile === f ? "#0d1e3a" : "none",
-                  borderLeft:
-                    activeFile === f
-                      ? `2px solid ${accent}`
-                      : "2px solid transparent",
-                  border: "none",
-                  borderRight: "none",
-                  borderTop: "none",
-                  borderBottom: "none",
-                  color: activeFile === f ? "#e2e8f0" : "#6b7a99",
-                  fontSize: 12,
-                  cursor: "pointer",
-                  textAlign: "left",
+                  justifyContent: "center",
+                  background: isHighlighted ? "rgba(34,211,238,0.12)" : "#0d172b",
+                  boxShadow: isActive ? `inset 0 0 0 1px ${accent}` : "none",
+                  fontSize: 15,
                 }}
               >
-                <span style={{ fontSize: 13 }}>{fileIcon(f)}</span>
-                {f}
-              </button>
-            ))}
-          </div>
-        )}
-      </aside>
+                {item.icon}
+              </span>
+              <span style={{ flex: 1 }}>{item.label}</span>
+            </button>
+          );
+        })}
+      </nav>
 
-      {/* ── Content ── */}
-      {children}
-    </div>
+      {files && files.length > 0 && (
+        <div
+          style={{
+            borderTop: `1px solid ${border}`,
+            padding: "16px 14px 18px",
+            maxHeight: "42%",
+            overflow: "auto",
+          }}
+        >
+          <p
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              color: dimmed,
+              letterSpacing: "0.14em",
+              padding: "0 10px 10px",
+              textTransform: "uppercase",
+              margin: 0,
+            }}
+          >
+            Files
+          </p>
+
+          {files.map((f) => (
+            <button
+              key={f}
+              onClick={() => onFileSelect && onFileSelect(f)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                width: "100%",
+                marginBottom: 4,
+                padding: "10px 12px",
+                background: activeFile === f ? "#0f1d34" : "transparent",
+                border: `1px solid ${activeFile === f ? "#1c3557" : "transparent"}`,
+                borderRadius: 12,
+                color: activeFile === f ? "#e2e8f0" : "#6b7a99",
+                fontSize: 13,
+                cursor: "pointer",
+                textAlign: "left",
+              }}
+            >
+              <span style={{ fontSize: 14 }}>{fileIcon(f)}</span>
+              <span
+                style={{
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {f}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </aside>
   );
+
+  if (children) {
+    return (
+      <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
+        {sidebar}
+        <div style={{ display: "flex", flex: 1, minWidth: 0 }}>{children}</div>
+      </div>
+    );
+  }
+
+  return sidebar;
 }

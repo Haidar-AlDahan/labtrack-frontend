@@ -91,7 +91,7 @@ function DashboardPage() {
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-2xl font-semibold text-white">Active Labs</h2>
               <button
-                onClick={() => navigate("/lab")}
+                onClick={() => navigate("/labs")}
                 className="text-sm font-medium text-cyan-400 hover:text-cyan-300"
               >
                 View all
