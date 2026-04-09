@@ -1,18 +1,7 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
-function fileIcon(name) {
-  if (name.endsWith(".py")) return "🐍";
-  if (name.endsWith(".md")) return "📄";
-  return "📋";
-}
-
-export default function SideBar({
-  files = null,
-  activeFile = null,
-  onFileSelect = null,
-  children = null,
-}) {
+export default function SideBar({ footer = null, children = null }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [hoveredNav, setHoveredNav] = useState(null);
@@ -131,7 +120,9 @@ export default function SideBar({
                   display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  background: isHighlighted ? "rgba(34,211,238,0.12)" : "#0d172b",
+                  background: isHighlighted
+                    ? "rgba(34,211,238,0.12)"
+                    : "#0d172b",
                   boxShadow: isActive ? `inset 0 0 0 1px ${accent}` : "none",
                   fontSize: 15,
                 }}
@@ -144,63 +135,7 @@ export default function SideBar({
         })}
       </nav>
 
-      {files && files.length > 0 && (
-        <div
-          style={{
-            borderTop: `1px solid ${border}`,
-            padding: "16px 14px 18px",
-            maxHeight: "42%",
-            overflow: "auto",
-          }}
-        >
-          <p
-            style={{
-              fontSize: 11,
-              fontWeight: 700,
-              color: dimmed,
-              letterSpacing: "0.14em",
-              padding: "0 10px 10px",
-              textTransform: "uppercase",
-              margin: 0,
-            }}
-          >
-            Files
-          </p>
-
-          {files.map((f) => (
-            <button
-              key={f}
-              onClick={() => onFileSelect && onFileSelect(f)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                width: "100%",
-                marginBottom: 4,
-                padding: "10px 12px",
-                background: activeFile === f ? "#0f1d34" : "transparent",
-                border: `1px solid ${activeFile === f ? "#1c3557" : "transparent"}`,
-                borderRadius: 12,
-                color: activeFile === f ? "#e2e8f0" : "#6b7a99",
-                fontSize: 13,
-                cursor: "pointer",
-                textAlign: "left",
-              }}
-            >
-              <span style={{ fontSize: 14 }}>{fileIcon(f)}</span>
-              <span
-                style={{
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {f}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
+      {footer}
     </aside>
   );
 
