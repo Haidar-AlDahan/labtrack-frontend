@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import InstructorLayout from "../../components/layout/InstructorLayout";
 import TestCasesTab from "./TestCasesTab";
+import SolutionsTab from "./SolutionsTab";
 
 const LABS_KEY = "labtrack_instructor_labs";
 const LANGUAGES = ["Python", "C++", "C", "Java", "JavaScript", "Go", "Rust"];
@@ -93,17 +94,18 @@ export default function CreateLabPage() {
   const [uploadingFiles, setUploadingFiles] = useState({});
   const [starterDragOver, setStarterDragOver] = useState(false);
   const [supportingDragOver, setSupportingDragOver] = useState(false);
-  const [testCases, setTestCases] = useState([]);
-  const [activeTab, setActiveTab] = useState("details"); // "details" | "testcases"
+  const [testCases, setTestCases]   = useState([]);
+  const [solutions, setSolutions]   = useState([]);
+  const [activeTab, setActiveTab]   = useState("details"); // "details" | "testcases" | "solutions"
 
   // Use a stable ID for the current lab session
   const currentLabIdRef = useRef(labId || Date.now().toString());
 
   // Refs to hold latest values for the auto-save interval (avoids stale closure)
-  const latestDataRef = useRef({ form, starterFiles, supportingFiles, labStatus, testCases });
+  const latestDataRef = useRef({ form, starterFiles, supportingFiles, labStatus, testCases, solutions });
   useEffect(() => {
-    latestDataRef.current = { form, starterFiles, supportingFiles, labStatus, testCases };
-  }, [form, starterFiles, supportingFiles, labStatus, testCases]);
+    latestDataRef.current = { form, starterFiles, supportingFiles, labStatus, testCases, solutions };
+  }, [form, starterFiles, supportingFiles, labStatus, testCases, solutions]);
 
   const starterInputRef = useRef(null);
   const supportingInputRef = useRef(null);
@@ -126,13 +128,14 @@ export default function CreateLabPage() {
       setStarterFiles(lab.starterFiles || []);
       setSupportingFiles(lab.supportingFiles || []);
       setTestCases(lab.testCases || []);
+      setSolutions(lab.solutions || []);
       setLabStatus(lab.status || "draft");
       if (lab.updatedAt) setLastSaved(new Date(lab.updatedAt));
     }
   }, [labId, isEditing]);
 
   const saveToDisk = useCallback(
-    (formData, starter, supporting, status, tcs, silent = false) => {
+    (formData, starter, supporting, status, tcs, sols, silent = false) => {
       if (!formData.title && !isEditing) return false;
       const stored = JSON.parse(localStorage.getItem(LABS_KEY) || "[]");
       const id = currentLabIdRef.current;
@@ -152,6 +155,7 @@ export default function CreateLabPage() {
         starterFiles: starter,
         supportingFiles: supporting,
         testCases: tcs,
+        solutions: sols,
         status,
         createdAt: existing ? existing.createdAt : now,
         updatedAt: now,
@@ -176,10 +180,10 @@ export default function CreateLabPage() {
   // Auto-save every 2 minutes
   useEffect(() => {
     const interval = setInterval(() => {
-      const { form: f, starterFiles: sf, supportingFiles: spf, labStatus: ls, testCases: tcs } =
+      const { form: f, starterFiles: sf, supportingFiles: spf, labStatus: ls, testCases: tcs, solutions: sols } =
         latestDataRef.current;
       if (!f.title) return;
-      saveToDisk(f, sf, spf, ls, tcs, true);
+      saveToDisk(f, sf, spf, ls, tcs, sols, true);
       showToast("info", "Auto-saved");
     }, AUTO_SAVE_INTERVAL_MS);
     return () => clearInterval(interval);
@@ -249,7 +253,7 @@ export default function CreateLabPage() {
     setErrors(blockingErrs);
     if (Object.keys(blockingErrs).length > 0) return;
 
-    saveToDisk(form, starterFiles, supportingFiles, "draft", testCases);
+    saveToDisk(form, starterFiles, supportingFiles, "draft", testCases, solutions);
   };
 
   const handlePublishClick = () => {
@@ -266,7 +270,7 @@ export default function CreateLabPage() {
     setIsPublishing(true);
     // Simulate network call
     setTimeout(() => {
-      saveToDisk(form, starterFiles, supportingFiles, "active", testCases);
+      saveToDisk(form, starterFiles, supportingFiles, "active", testCases, solutions);
       setIsPublishing(false);
       setShowPublishConfirm(false);
     }, 900);
@@ -649,13 +653,9 @@ export default function CreateLabPage() {
           }}
         >
           {[
-            { key: "details", label: "Lab Details", icon: "📋" },
-            {
-              key: "testcases",
-              label: `Test Cases`,
-              icon: "🧪",
-              badge: testCases.length,
-            },
+            { key: "details",   label: "Lab Details",         icon: "📋" },
+            { key: "testcases", label: "Test Cases",  icon: "🧪", badge: testCases.length },
+            { key: "solutions", label: "Solutions",   icon: "💡", badge: solutions.length },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -1108,6 +1108,17 @@ export default function CreateLabPage() {
             setTestCases={setTestCases}
             labPoints={form.points}
             labLanguages={form.languages}
+            showToast={showToast}
+          />
+        )}
+
+        {/* ── Solutions tab ── */}
+        {activeTab === "solutions" && (
+          <SolutionsTab
+            solutions={solutions}
+            setSolutions={setSolutions}
+            labLanguages={form.languages}
+            labDueDate={form.dueDate}
             showToast={showToast}
           />
         )}
