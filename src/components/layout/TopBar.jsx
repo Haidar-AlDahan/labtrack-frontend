@@ -1,84 +1,52 @@
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 
-export default function TopBar({ title, lastSaved = null, course = null }) {
+function TopBar() {
   const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
 
-  const bg1 = "#080f1e";
-  const bg2 = "#0b1424";
-  const border = "#1a2540";
-  const accent = "#22d3ee";
-  const muted = "#8898b3";
-  const dimmed = "#4a5568";
+  const currentUser = JSON.parse(localStorage.getItem("currentUser")) || {};
+
+  const handleLogout = () => {
+    localStorage.removeItem("currentUser");
+    navigate("/");
+  };
+
+  const initial = currentUser.fullName
+    ? currentUser.fullName.charAt(0).toUpperCase()
+    : "U";
 
   return (
-    <header
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "0 24px",
-        height: 52,
-        background: bg1,
-        borderBottom: `1px solid ${border}`,
-        flexShrink: 0,
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-        <button
-          onClick={() => navigate("/dashboard")}
-          style={{
-            background: "none",
-            border: "none",
-            color: accent,
-            fontSize: 18,
-            fontWeight: 700,
-            cursor: "pointer",
-            letterSpacing: "-0.5px",
-          }}
-        >
-          LabTrack
-        </button>
-        <span style={{ color: border, fontSize: 18 }}>›</span>
-        <span style={{ fontSize: 14, fontWeight: 600, color: "#e2e8f0" }}>
-          {title}
-        </span>
-      </div>
-      <span style={{ fontSize: 11, color: dimmed }}>
-        {lastSaved ? `Last saved at ${lastSaved}` : "Auto-saves every 30s"}
-      </span>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        {course && (
-          <span
-            style={{
-              background: bg2,
-              border: `1px solid ${border}`,
-              borderRadius: 20,
-              padding: "4px 12px",
-              fontSize: 12,
-              color: muted,
-            }}
-          >
-            {course}
-          </span>
-        )}
-        <div
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: "50%",
-            background: "linear-gradient(135deg,#22d3ee,#0369a1)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 13,
-            fontWeight: 700,
-            color: "#fff",
-            cursor: "pointer",
-          }}
-        >
-          M
+    <header className="flex h-16 items-center justify-between border-b-2 border-cyan-400 bg-[#0b1220] px-6">
+      <div></div>
+
+      <div className="flex items-center gap-4 relative">
+        <div className="rounded-full bg-[#1e293b] px-5 py-2 text-sm font-semibold text-cyan-400">
+          SWE 363 - SEC 03
         </div>
+
+        {/* Profile Circle */}
+        <div
+          onClick={() => setOpen(!open)}
+          className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-cyan-400 font-bold text-[#0b1220]"
+        >
+          {initial}
+        </div>
+
+        {/* Dropdown */}
+        {open && (
+          <div className="absolute right-0 top-14 w-40 rounded-xl bg-[#1a2238] shadow-lg">
+            <button
+              onClick={handleLogout}
+              className="w-full px-4 py-3 text-left text-sm text-white hover:bg-[#2a3555]"
+            >
+              Logout
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );
 }
+
+export default TopBar;

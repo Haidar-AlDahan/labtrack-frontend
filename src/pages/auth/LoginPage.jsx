@@ -53,8 +53,9 @@ function LoginPage() {
 
       if (!user) {
         setErrors({ identifier: "Invalid email or password." });
-        return;
+        return;  
       }
+       localStorage.setItem("currentUser", JSON.stringify(user));
 
       if (user.role === "instructor") {
         navigate("/admin/users");
@@ -88,6 +89,7 @@ function LoginPage() {
       const users = JSON.parse(localStorage.getItem("users")) || [];
 
       users.push({
+        fullName: registerData.fullName,
         email: registerData.email,
         password: registerData.password,
         role: registerData.role,
