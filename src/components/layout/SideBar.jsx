@@ -68,9 +68,7 @@ export default function SideBar({ footer = null, children = null }) {
               fontSize: 12,
               color: muted,
             }}
-          >
-            Student workspace
-          </div>
+          ></div>
         </div>
       </div>
 
