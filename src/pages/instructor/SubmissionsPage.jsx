@@ -658,8 +658,8 @@ export default function SubmissionsPage() {
                     </button>
                     {sub.status === "submitted" && (
                       <button
-                        onClick={() => openView(sub)}
-                        style={{ padding: "5px 10px", borderRadius: 7, border: "none", background: "rgba(34,211,238,0.12)", color: "#22d3ee", fontSize: 11, fontWeight: 600, cursor: "pointer", border: "1px solid rgba(34,211,238,0.2)" }}
+                        onClick={() => navigate(`/instructor/labs/${labId}/submissions/${sub.id}/grade`)}
+                        style={{ padding: "5px 10px", borderRadius: 7, border: "1px solid rgba(34,211,238,0.2)", background: "rgba(34,211,238,0.12)", color: "#22d3ee", fontSize: 11, fontWeight: 600, cursor: "pointer" }}
                       >
                         Grade
                       </button>
