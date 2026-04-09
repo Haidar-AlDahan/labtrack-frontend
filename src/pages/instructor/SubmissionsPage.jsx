@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import InstructorLayout from "../../components/layout/InstructorLayout";
+import BulkGradePanel from "./BulkGradePanel";
 
 const LABS_KEY = "labtrack_instructor_labs";
 const SUBS_KEY = "labtrack_submissions";
@@ -172,6 +173,8 @@ export default function SubmissionsPage() {
   const [gradeValue, setGradeValue] = useState("");
   const [gradeErr, setGradeErr] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [showBulk, setShowBulk]       = useState(false);
+  const [pageToast, setPageToast]     = useState(null);
 
   const prevSubCountRef = useRef(0);
 
@@ -392,6 +395,20 @@ export default function SubmissionsPage() {
               {autoRefresh && (
                 <span style={{ fontSize: 10, color: "#475569" }}>· 30s</span>
               )}
+            </button>
+
+            {/* Bulk Grade */}
+            <button
+              onClick={() => setShowBulk(true)}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "7px 14px", borderRadius: 9,
+                border: "1px solid rgba(34,211,238,0.3)",
+                background: "rgba(34,211,238,0.08)",
+                color: "#22d3ee", fontSize: 12, fontWeight: 600, cursor: "pointer",
+              }}
+            >
+              ⚡ Bulk Grade
             </button>
 
             {/* Download ZIP */}
@@ -830,6 +847,34 @@ export default function SubmissionsPage() {
       )}
 
       <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }`}</style>
+
+      {pageToast && (
+        <div style={{
+          position: "fixed", top: 20, right: 20, zIndex: 200,
+          padding: "12px 20px", borderRadius: 10, fontSize: 13, fontWeight: 600,
+          boxShadow: "0 8px 30px rgba(0,0,0,0.45)",
+          display: "flex", alignItems: "center", gap: 8, maxWidth: 380,
+          background: pageToast.type === "success" ? "linear-gradient(135deg,#064e3b,#065f46)" : "linear-gradient(135deg,#7f1d1d,#991b1b)",
+          border: `1px solid ${pageToast.type === "success" ? "rgba(52,211,153,0.3)" : "rgba(239,68,68,0.3)"}`,
+          color: pageToast.type === "success" ? "#6ee7b7" : "#fca5a5",
+        }}>
+          <span>{pageToast.type === "success" ? "✓" : "✕"}</span>
+          {pageToast.message}
+        </div>
+      )}
+
+      {showBulk && (
+        <BulkGradePanel
+          lab={lab}
+          submissions={submissions}
+          onClose={() => setShowBulk(false)}
+          onApplied={loadAll}
+          showToast={(type, msg) => {
+            setPageToast({ type, message: msg });
+            setTimeout(() => setPageToast(null), 3500);
+          }}
+        />
+      )}
     </InstructorLayout>
   );
 }
