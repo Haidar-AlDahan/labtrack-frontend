@@ -7,6 +7,7 @@ import GradesPage from "../pages/student/GradesPage.jsx";
 import UserManagementPage from "../pages/admin/UserManagementPage.jsx";
 import LabsManagementPage from "../pages/instructor/LabsManagementPage.jsx";
 import CreateLabPage from "../pages/instructor/CreateLabPage.jsx";
+import SubmissionsPage from "../pages/instructor/SubmissionsPage.jsx";
 
 function AppRouter() {
   return (
@@ -22,6 +23,7 @@ function AppRouter() {
         <Route path="/instructor/labs" element={<LabsManagementPage />} />
         <Route path="/instructor/labs/create" element={<CreateLabPage />} />
         <Route path="/instructor/labs/:labId/edit" element={<CreateLabPage />} />
+        <Route path="/instructor/labs/:labId/submissions" element={<SubmissionsPage />} />
       </Routes>
     </BrowserRouter>
   );

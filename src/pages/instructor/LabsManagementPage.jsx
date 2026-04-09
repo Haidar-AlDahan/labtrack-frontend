@@ -250,7 +250,7 @@ export default function LabsManagementPage() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "60px 1fr 110px 160px 70px 90px 1fr 130px",
+                gridTemplateColumns: "60px 1fr 110px 160px 70px 90px 1fr 180px",
                 gap: 0,
                 padding: "12px 20px",
                 borderBottom: "1px solid #1a2540",
@@ -281,7 +281,7 @@ export default function LabsManagementPage() {
                   key={lab.id}
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "60px 1fr 110px 160px 70px 90px 1fr 130px",
+                    gridTemplateColumns: "60px 1fr 110px 160px 70px 90px 1fr 180px",
                     gap: 0,
                     padding: "14px 20px",
                     borderBottom: isLast ? "none" : "1px solid #0f1b33",
@@ -371,6 +371,21 @@ export default function LabsManagementPage() {
                     )}
                   </div>
                   <div style={{ display: "flex", gap: 6 }}>
+                    <button
+                      onClick={() => navigate(`/instructor/labs/${lab.id}/submissions`)}
+                      style={{
+                        padding: "5px 10px",
+                        borderRadius: 7,
+                        border: "1px solid rgba(34,211,238,0.2)",
+                        background: "rgba(34,211,238,0.1)",
+                        color: "#22d3ee",
+                        fontSize: 12,
+                        cursor: "pointer",
+                        fontWeight: 600,
+                      }}
+                    >
+                      Submissions
+                    </button>
                     <button
                       onClick={() => navigate(`/instructor/labs/${lab.id}/edit`)}
                       style={{
