@@ -335,6 +335,17 @@ function resolveUniqueFileName(candidateName, existingNames, currentName) {
   return nextName;
 }
 
+function sidebarFileIcon(name) {
+  if (name.endsWith(".py")) return "🐍";
+  if (name.endsWith(".md")) return "📄";
+  if (name.endsWith(".java")) return "☕";
+  if (name.endsWith(".html")) return "🌐";
+  if (name.endsWith(".css")) return "🎨";
+  if (name.endsWith(".jsx")) return "⚛️";
+  if (name.endsWith(".js")) return "🟨";
+  return "📋";
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function LabWorkspacePage() {
   const navigate = useNavigate();
@@ -351,6 +362,7 @@ export default function LabWorkspacePage() {
         f.toLowerCase().includes("solution") && f.toLowerCase().endsWith(".py"),
     ) || selectedLab.files[0];
   const [files, setFiles] = useState(selectedLab.files);
+  const [openFiles, setOpenFiles] = useState(selectedLab.files);
   const [activeFile, setActiveFile] = useState(() => {
     return initialSolutionFile;
   });
@@ -367,6 +379,8 @@ export default function LabWorkspacePage() {
   const [consoleMeta, setConsoleMeta] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
   const [showSubmit, setShowSubmit] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [filePendingDelete, setFilePendingDelete] = useState(null);
   const [submitted, setSubmitted] = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
   const [descCollapsed, setDescCollapsed] = useState(false);
@@ -375,6 +389,9 @@ export default function LabWorkspacePage() {
   const [renamingFile, setRenamingFile] = useState(null);
   const [renameDraft, setRenameDraft] = useState("");
   const [hoveredFile, setHoveredFile] = useState(null);
+  const [hoveredSidebarFile, setHoveredSidebarFile] = useState(null);
+  const [draggedTab, setDraggedTab] = useState(null);
+  const [dragOverTab, setDragOverTab] = useState(null);
 
   // Auto-save simulation
   useEffect(() => {
@@ -394,6 +411,7 @@ export default function LabWorkspacePage() {
       ) || selectedLab.files[0];
 
     setFiles(selectedLab.files);
+    setOpenFiles(selectedLab.files);
     setActiveFile(nextSolutionFile);
     setPrimarySolutionFile(nextSolutionFile);
     setFileContents(
@@ -414,6 +432,7 @@ export default function LabWorkspacePage() {
     if (!nextName) return;
 
     setFiles((currentFiles) => [...currentFiles, nextName]);
+    setOpenFiles((currentOpenFiles) => [...currentOpenFiles, nextName]);
     setFileContents((currentContents) => ({
       ...currentContents,
       [nextName]: buildNewFileContent(nextName),
@@ -440,6 +459,11 @@ export default function LabWorkspacePage() {
 
     setFiles((currentFiles) =>
       currentFiles.map((fileName) =>
+        fileName === renamingFile ? nextName : fileName,
+      ),
+    );
+    setOpenFiles((currentOpenFiles) =>
+      currentOpenFiles.map((fileName) =>
         fileName === renamingFile ? nextName : fileName,
       ),
     );
@@ -492,11 +516,70 @@ export default function LabWorkspacePage() {
     }
   };
 
+  const handleCloseTab = (fileToClose) => {
+    setOpenFiles((currentOpenFiles) => {
+      const nextOpenFiles = currentOpenFiles.filter((f) => f !== fileToClose);
+
+      if (activeFile === fileToClose) {
+        setActiveFile(nextOpenFiles[0] ?? null);
+      }
+
+      return nextOpenFiles;
+    });
+  };
+
+  const handleTabDragStart = (event, fileName) => {
+    // Needed for consistent drag behavior across browsers.
+    event.dataTransfer.setData("text/plain", fileName);
+    event.dataTransfer.effectAllowed = "move";
+    setDraggedTab(fileName);
+    setDragOverTab(fileName);
+  };
+
+  const handleTabDragOver = (event, fileName) => {
+    event.preventDefault();
+    if (dragOverTab !== fileName) {
+      setDragOverTab(fileName);
+    }
+  };
+
+  const handleTabDrop = (event, targetFile) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!draggedTab || draggedTab === targetFile) {
+      setDragOverTab(null);
+      setDraggedTab(null);
+      return;
+    }
+
+    setOpenFiles((currentOpenFiles) => {
+      const sourceIndex = currentOpenFiles.indexOf(draggedTab);
+      const targetIndex = currentOpenFiles.indexOf(targetFile);
+      if (sourceIndex === -1 || targetIndex === -1) return currentOpenFiles;
+
+      const reordered = [...currentOpenFiles];
+      reordered.splice(sourceIndex, 1);
+      reordered.splice(targetIndex, 0, draggedTab);
+      return reordered;
+    });
+
+    setDragOverTab(null);
+    setDraggedTab(null);
+  };
+
+  const handleTabDragEnd = () => {
+    setDraggedTab(null);
+    setDragOverTab(null);
+  };
+
   const handleDeleteFile = (fileToDelete) => {
     const remainingFiles = files.filter((f) => f !== fileToDelete);
-    if (remainingFiles.length === 0) return;
+    const remainingOpenFiles = openFiles.filter((f) => f !== fileToDelete);
 
     setFiles(remainingFiles);
+    setOpenFiles(remainingOpenFiles);
+
     setFileContents((currentContents) => {
       const nextContents = { ...currentContents };
       delete nextContents[fileToDelete];
@@ -504,12 +587,34 @@ export default function LabWorkspacePage() {
     });
 
     if (activeFile === fileToDelete) {
-      setActiveFile(remainingFiles[0]);
+      setActiveFile(remainingOpenFiles[0] ?? remainingFiles[0] ?? null);
     }
 
     if (primarySolutionFile === fileToDelete) {
-      setPrimarySolutionFile(remainingFiles[0]);
+      setPrimarySolutionFile(remainingFiles[0] ?? null);
     }
+
+    if (renamingFile === fileToDelete) {
+      setRenamingFile(null);
+      setRenameDraft("");
+    }
+  };
+
+  const requestDeleteFile = (fileName) => {
+    setFilePendingDelete(fileName);
+    setShowDeleteConfirm(true);
+  };
+
+  const cancelDeleteFile = () => {
+    setShowDeleteConfirm(false);
+    setFilePendingDelete(null);
+  };
+
+  const confirmDeleteFile = () => {
+    if (!filePendingDelete) return;
+    handleDeleteFile(filePendingDelete);
+    setShowDeleteConfirm(false);
+    setFilePendingDelete(null);
   };
 
   const handleRun = () => {
@@ -662,9 +767,9 @@ export default function LabWorkspacePage() {
   const visibleTotal = visibleTests.length;
   const supportedExtensions =
     RUNNABLE_EXTENSIONS_BY_LANGUAGE[selectedLab.language.toLowerCase()] ?? [];
-  const activeFileExtension = getFileExtension(activeFile);
+  const activeFileExtension = activeFile ? getFileExtension(activeFile) : "";
   const isActiveFileRunnable =
-    supportedExtensions.includes(activeFileExtension);
+    !!activeFile && supportedExtensions.includes(activeFileExtension);
   const lines = code.split("\n");
 
   const handleEditorChange = (value) => {
@@ -688,7 +793,6 @@ export default function LabWorkspacePage() {
     <div
       style={{
         display: "flex",
-        flexDirection: "column",
         height: "100vh",
         background: bg0,
         color: "#e2e8f0",
@@ -696,147 +800,371 @@ export default function LabWorkspacePage() {
         overflow: "hidden",
       }}
     >
-      <TopBar
-        title={pageTitle}
-        lastSaved={lastSaved}
-        course={selectedLab.course}
-      />
-
-      {/* ── Body ── */}
       <SideBar
-        files={files}
-        activeFile={activeFile}
-        onFileSelect={setActiveFile}
-      >
-        {/* ── Description Panel ── */}
-        <div
-          style={{
-            width: descCollapsed ? 40 : 260,
-            minWidth: descCollapsed ? 40 : 260,
-            background: bg1,
-            borderRight: `1px solid ${border}`,
-            display: "flex",
-            flexDirection: "column",
-            transition: "width 0.2s,min-width 0.2s",
-            overflow: "hidden",
-          }}
-        >
-          <div
-            style={{
-              height: panelHeaderHeight,
-              padding: "0 12px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: descCollapsed ? "center" : "space-between",
-              borderBottom: `1px solid ${border}`,
-            }}
-          >
-            {!descCollapsed && (
-              <span
-                style={{
-                  fontSize: 10,
-                  fontWeight: 700,
-                  color: dimmed,
-                  letterSpacing: "0.1em",
-                  textTransform: "uppercase",
-                }}
-              >
-                Lab Details
-              </span>
-            )}
-            <button
-              onClick={() => setDescCollapsed(!descCollapsed)}
+        footer={
+          files.length > 0 ? (
+            <div
               style={{
-                background: "none",
-                border: "none",
-                color: muted,
-                cursor: "pointer",
-                fontSize: 18,
-                lineHeight: 1,
-                padding: 2,
+                borderTop: `1px solid ${border}`,
+                padding: "16px 14px 18px",
+                maxHeight: "42%",
+                overflow: "auto",
               }}
             >
-              {descCollapsed ? "›" : "‹"}
-            </button>
-          </div>
-          {!descCollapsed && (
-            <div style={{ padding: 16, overflow: "auto", flex: 1 }}>
-              <div
+              <p
                 style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: 6,
-                  marginBottom: 14,
-                }}
-              >
-                <span
-                  style={{
-                    background: "#1a2540",
-                    borderRadius: 20,
-                    padding: "3px 10px",
-                    fontSize: 11,
-                    color: "#f59e0b",
-                  }}
-                >
-                  ⏰ Due: {selectedLab.dueDate}
-                </span>
-                <span
-                  style={{
-                    background: "#1a2540",
-                    borderRadius: 20,
-                    padding: "3px 10px",
-                    fontSize: 11,
-                    color: accent,
-                  }}
-                >
-                  🐍 {selectedLab.language}
-                </span>
-              </div>
-              <pre
-                style={{
-                  fontSize: 12,
-                  lineHeight: 1.7,
-                  color: "#94a3b8",
-                  whiteSpace: "pre-wrap",
-                  fontFamily: "inherit",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: dimmed,
+                  letterSpacing: "0.14em",
+                  padding: "0 10px 10px",
+                  textTransform: "uppercase",
                   margin: 0,
                 }}
               >
-                {selectedLab.description}
-              </pre>
-            </div>
-          )}
-        </div>
+                Files
+              </p>
 
-        {/* ── Code Editor ── */}
-        <div
+              {files.map((f) => (
+                <div
+                  key={f}
+                  onMouseEnter={() => setHoveredSidebarFile(f)}
+                  onMouseLeave={() => setHoveredSidebarFile(null)}
+                  style={{ position: "relative", marginBottom: 4 }}
+                >
+                  <button
+                    onClick={() => {
+                      setOpenFiles((currentOpenFiles) =>
+                        currentOpenFiles.includes(f)
+                          ? currentOpenFiles
+                          : [...currentOpenFiles, f],
+                      );
+                      setActiveFile(f);
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      width: "100%",
+                      padding: "10px 12px",
+                      background: activeFile === f ? "#0f1d34" : "transparent",
+                      border: `1px solid ${activeFile === f ? "#1c3557" : "transparent"}`,
+                      borderRadius: 12,
+                      color: activeFile === f ? "#e2e8f0" : "#6b7a99",
+                      fontSize: 13,
+                      cursor: "pointer",
+                      textAlign: "left",
+                    }}
+                  >
+                    <span style={{ fontSize: 14 }}>{sidebarFileIcon(f)}</span>
+                    <span
+                      style={{
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        flex: 1,
+                      }}
+                    >
+                      {f}
+                    </span>
+                  </button>
+
+                  {hoveredSidebarFile === f && activeFile === f && (
+                    <button
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        requestDeleteFile(f);
+                      }}
+                      aria-label={`Delete ${f}`}
+                      style={{
+                        position: "absolute",
+                        right: 10,
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        width: 20,
+                        height: 20,
+                        border: "none",
+                        borderRadius: 999,
+                        background: "rgba(248,113,113,0.12)",
+                        color: "#f87171",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 14,
+                        padding: 0,
+                      }}
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : null
+        }
+      />
+
+      <div
+        style={{
+          display: "flex",
+          flex: 1,
+          minWidth: 0,
+          flexDirection: "column",
+        }}
+      >
+        <TopBar
+          title={pageTitle}
+          lastSaved={lastSaved}
+          course={selectedLab.course}
+        />
+
+        {/* ── Body ── */}
+        <main
           style={{
-            flex: 1,
             display: "flex",
-            flexDirection: "column",
-            background: bg2,
+            flex: 1,
+            minWidth: 0,
+            minHeight: 0,
             overflow: "hidden",
           }}
         >
-          {/* Tab bar */}
+          {/* ── Description Panel ── */}
           <div
             style={{
-              display: "flex",
-              minHeight: panelHeaderHeight,
-              alignItems: "stretch",
-              borderBottom: `1px solid ${border}`,
+              width: descCollapsed ? 40 : 260,
+              minWidth: descCollapsed ? 40 : 260,
               background: bg1,
+              borderRight: `1px solid ${border}`,
+              display: "flex",
+              flexDirection: "column",
+              transition: "width 0.2s,min-width 0.2s",
+              overflow: "hidden",
             }}
           >
-            {files.map((f) =>
-              renamingFile === f ? (
+            <div
+              style={{
+                height: panelHeaderHeight,
+                padding: "0 12px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: descCollapsed ? "center" : "space-between",
+                borderBottom: `1px solid ${border}`,
+              }}
+            >
+              {!descCollapsed && (
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    color: dimmed,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Lab Details
+                </span>
+              )}
+              <button
+                onClick={() => setDescCollapsed(!descCollapsed)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: muted,
+                  cursor: "pointer",
+                  fontSize: 18,
+                  lineHeight: 1,
+                  padding: 2,
+                }}
+              >
+                {descCollapsed ? "›" : "‹"}
+              </button>
+            </div>
+            {!descCollapsed && (
+              <div style={{ padding: 16, overflow: "auto", flex: 1 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 6,
+                    marginBottom: 14,
+                  }}
+                >
+                  <span
+                    style={{
+                      background: "#1a2540",
+                      borderRadius: 20,
+                      padding: "3px 10px",
+                      fontSize: 11,
+                      color: "#f59e0b",
+                    }}
+                  >
+                    ⏰ Due: {selectedLab.dueDate}
+                  </span>
+                  <span
+                    style={{
+                      background: "#1a2540",
+                      borderRadius: 20,
+                      padding: "3px 10px",
+                      fontSize: 11,
+                      color: accent,
+                    }}
+                  >
+                    🐍 {selectedLab.language}
+                  </span>
+                </div>
+                <pre
+                  style={{
+                    fontSize: 12,
+                    lineHeight: 1.7,
+                    color: "#94a3b8",
+                    whiteSpace: "pre-wrap",
+                    fontFamily: "inherit",
+                    margin: 0,
+                  }}
+                >
+                  {selectedLab.description}
+                </pre>
+              </div>
+            )}
+          </div>
+
+          {/* ── Code Editor ── */}
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              background: bg2,
+              overflow: "hidden",
+            }}
+          >
+            {/* Tab bar */}
+            <div
+              style={{
+                display: "flex",
+                minHeight: panelHeaderHeight,
+                alignItems: "stretch",
+                borderBottom: `1px solid ${border}`,
+                background: bg1,
+              }}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => {
+                if (event.target !== event.currentTarget) return;
+                if (!draggedTab) return;
+                setOpenFiles((currentOpenFiles) => {
+                  const sourceIndex = currentOpenFiles.indexOf(draggedTab);
+                  if (sourceIndex === -1) return currentOpenFiles;
+
+                  const reordered = [...currentOpenFiles];
+                  reordered.splice(sourceIndex, 1);
+                  reordered.push(draggedTab);
+                  return reordered;
+                });
+                setDragOverTab(null);
+                setDraggedTab(null);
+              }}
+            >
+              {openFiles.map((f) =>
+                renamingFile === f ? (
+                  <input
+                    key={f}
+                    value={renameDraft}
+                    onChange={(event) => setRenameDraft(event.target.value)}
+                    onBlur={commitRenamePage}
+                    onKeyDown={handleRenameKeyDown}
+                    autoFocus
+                    style={{
+                      width: 180,
+                      height: panelHeaderHeight,
+                      padding: "0 14px",
+                      fontSize: 12,
+                      background: bg2,
+                      borderBottom: `2px solid ${accent}`,
+                      border: "none",
+                      color: "#e2e8f0",
+                      outline: "none",
+                    }}
+                  />
+                ) : (
+                  <div
+                    key={f}
+                    draggable
+                    onDragStart={(event) => handleTabDragStart(event, f)}
+                    onDragOver={(event) => handleTabDragOver(event, f)}
+                    onDrop={(event) => handleTabDrop(event, f)}
+                    onDragEnd={handleTabDragEnd}
+                    onMouseEnter={() => setHoveredFile(f)}
+                    onMouseLeave={() => setHoveredFile(null)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      opacity: draggedTab === f ? 0.55 : 1,
+                      borderLeft:
+                        dragOverTab === f && draggedTab !== f
+                          ? `2px solid ${accent}`
+                          : "2px solid transparent",
+                    }}
+                  >
+                    <button
+                      onClick={() =>
+                        f === activeFile ? beginRenamePage(f) : setActiveFile(f)
+                      }
+                      style={{
+                        height: panelHeaderHeight,
+                        padding: "0 20px",
+                        fontSize: 12,
+                        background: "none",
+                        borderBottom:
+                          f === activeFile
+                            ? `2px solid ${accent}`
+                            : "2px solid transparent",
+                        border: "none",
+                        borderTop: "none",
+                        borderLeft: "none",
+                        borderRight: "none",
+                        color: f === activeFile ? accent : "#6b7a99",
+                        cursor: "grab",
+                      }}
+                    >
+                      {f}
+                    </button>
+                    {f === activeFile && hoveredFile === f && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCloseTab(f);
+                        }}
+                        aria-label="Close tab"
+                        style={{
+                          width: 20,
+                          height: 20,
+                          padding: 0,
+                          fontSize: 14,
+                          background: "none",
+                          border: "none",
+                          color: "#f87171",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                ),
+              )}
+              {isAddingPage ? (
                 <input
-                  key={f}
-                  value={renameDraft}
-                  onChange={(event) => setRenameDraft(event.target.value)}
-                  onBlur={commitRenamePage}
-                  onKeyDown={handleRenameKeyDown}
+                  value={newPageName}
+                  onChange={(event) => setNewPageName(event.target.value)}
+                  onBlur={handleCreatePage}
+                  onKeyDown={handleNewPageKeyDown}
                   autoFocus
+                  placeholder="Page name"
                   style={{
                     width: 180,
                     height: panelHeaderHeight,
@@ -850,428 +1178,424 @@ export default function LabWorkspacePage() {
                   }}
                 />
               ) : (
-                <div
-                  key={f}
-                  onMouseEnter={() => setHoveredFile(f)}
-                  onMouseLeave={() => setHoveredFile(null)}
+                <button
+                  onClick={() => setIsAddingPage(true)}
+                  aria-label="Add page"
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 4,
+                    width: 40,
+                    height: panelHeaderHeight,
+                    padding: 0,
+                    fontSize: 16,
+                    background: "none",
+                    borderBottom: "2px solid transparent",
+                    border: "none",
+                    color: "#6b7a99",
+                    cursor: "pointer",
                   }}
                 >
-                  <button
-                    onClick={() =>
-                      f === activeFile ? beginRenamePage(f) : setActiveFile(f)
-                    }
-                    style={{
-                      height: panelHeaderHeight,
-                      padding: "0 20px",
-                      fontSize: 12,
-                      background: "none",
-                      borderBottom:
-                        f === activeFile
-                          ? `2px solid ${accent}`
-                          : "2px solid transparent",
-                      border: "none",
-                      borderTop: "none",
-                      borderLeft: "none",
-                      borderRight: "none",
-                      color: f === activeFile ? accent : "#6b7a99",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {f}
-                  </button>
-                  {f === activeFile && hoveredFile === f && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteFile(f);
-                      }}
-                      aria-label="Delete file"
-                      style={{
-                        width: 20,
-                        height: 20,
-                        padding: 0,
-                        fontSize: 14,
-                        background: "none",
-                        border: "none",
-                        color: "#f87171",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-              ),
-            )}
-            {isAddingPage ? (
-              <input
-                value={newPageName}
-                onChange={(event) => setNewPageName(event.target.value)}
-                onBlur={handleCreatePage}
-                onKeyDown={handleNewPageKeyDown}
-                autoFocus
-                placeholder="Page name"
-                style={{
-                  width: 180,
-                  height: panelHeaderHeight,
-                  padding: "0 14px",
-                  fontSize: 12,
-                  background: bg2,
-                  borderBottom: `2px solid ${accent}`,
-                  border: "none",
-                  color: "#e2e8f0",
-                  outline: "none",
-                }}
-              />
-            ) : (
-              <button
-                onClick={() => setIsAddingPage(true)}
-                aria-label="Add page"
-                style={{
-                  width: 40,
-                  height: panelHeaderHeight,
-                  padding: 0,
-                  fontSize: 16,
-                  background: "none",
-                  borderBottom: "2px solid transparent",
-                  border: "none",
-                  color: "#6b7a99",
-                  cursor: "pointer",
-                }}
-              >
-                +
-              </button>
-            )}
-          </div>
+                  +
+                </button>
+              )}
+            </div>
 
-          {/* Editor */}
-          <div style={{ flex: 1, overflow: "auto", position: "relative" }}>
-            <div style={{ display: "flex", minHeight: "100%" }}>
-              {/* Line numbers */}
-              <div
-                style={{
-                  minWidth: 50,
-                  padding: "16px 0",
-                  textAlign: "right",
-                  color: "#2d3f5c",
-                  fontSize: 13,
-                  lineHeight: "1.6",
-                  userSelect: "none",
-                  fontFamily: "'JetBrains Mono','Fira Code',monospace",
-                  background: bg1,
-                  borderRight: `1px solid ${border}`,
-                }}
-              >
-                {lines.map((_, i) => (
-                  <div key={i} style={{ paddingRight: 12 }}>
-                    {i + 1}
-                  </div>
-                ))}
-              </div>
-
-              {/* Highlighted + textarea overlay */}
-              <div style={{ flex: 1, position: "relative" }}>
-                <pre
+            {/* Editor */}
+            <div style={{ flex: 1, overflow: "auto", position: "relative" }}>
+              <div style={{ display: "flex", minHeight: "100%" }}>
+                {/* Line numbers */}
+                <div
                   style={{
-                    margin: 0,
-                    padding: "16px",
+                    minWidth: 50,
+                    padding: "16px 0",
+                    textAlign: "right",
+                    color: "#2d3f5c",
                     fontSize: 13,
                     lineHeight: "1.6",
-                    fontFamily:
-                      "'JetBrains Mono','Fira Code','Courier New',monospace",
-                    color: "#cdd6f4",
-                    pointerEvents: "none",
-                    whiteSpace: "pre",
-                    minHeight: "100%",
+                    userSelect: "none",
+                    fontFamily: "'JetBrains Mono','Fira Code',monospace",
+                    background: bg1,
+                    borderRight: `1px solid ${border}`,
                   }}
                 >
-                  {lines.map((line, i) => (
-                    <div key={i} style={{ minHeight: "1.6em" }}>
-                      {syntaxHighlight(line)}
+                  {lines.map((_, i) => (
+                    <div key={i} style={{ paddingRight: 12 }}>
+                      {i + 1}
                     </div>
                   ))}
-                </pre>
+                </div>
+
+                {/* Highlighted + textarea overlay */}
+                <div style={{ flex: 1, position: "relative" }}>
+                  <pre
+                    style={{
+                      margin: 0,
+                      padding: "16px",
+                      fontSize: 13,
+                      lineHeight: "1.6",
+                      fontFamily:
+                        "'JetBrains Mono','Fira Code','Courier New',monospace",
+                      color: "#cdd6f4",
+                      pointerEvents: "none",
+                      whiteSpace: "pre",
+                      minHeight: "100%",
+                    }}
+                  >
+                    {lines.map((line, i) => (
+                      <div key={i} style={{ minHeight: "1.6em" }}>
+                        {syntaxHighlight(line)}
+                      </div>
+                    ))}
+                  </pre>
+                  <textarea
+                    value={code}
+                    onChange={(e) => handleEditorChange(e.target.value)}
+                    spellCheck={false}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: "100%",
+                      height: "100%",
+                      padding: "16px",
+                      fontSize: 13,
+                      lineHeight: "1.6",
+                      fontFamily:
+                        "'JetBrains Mono','Fira Code','Courier New',monospace",
+                      background: "transparent",
+                      color: "transparent",
+                      caretColor: accent,
+                      border: "none",
+                      outline: "none",
+                      resize: "none",
+                      whiteSpace: "pre",
+                      overflow: "hidden",
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Test Results Panel ── */}
+          <div
+            style={{
+              width: 360,
+              minWidth: 360,
+              background: bg1,
+              borderLeft: `1px solid ${border}`,
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                height: panelHeaderHeight,
+                padding: "0 16px",
+                borderBottom: `1px solid ${border}`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <span style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0" }}>
+                Test Results
+              </span>
+              <span
+                style={{
+                  fontSize: 14,
+                  fontWeight: 700,
+                  color: passed === visibleTotal ? "#4ade80" : "#f87171",
+                }}
+              >
+                {passed}/{visibleTotal}
+              </span>
+            </div>
+
+            <div style={{ flex: 1, overflow: "auto", padding: "12px 0" }}>
+              <div style={{ padding: "0 16px 14px" }}>
+                <p
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    color: dimmed,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    marginBottom: 8,
+                  }}
+                >
+                  Test Results
+                </p>
+                <div
+                  style={{
+                    border: `1px solid #0f1b30`,
+                    borderRadius: 12,
+                    overflow: "hidden",
+                    background: bg2,
+                  }}
+                >
+                  {visibleTests.map((t, index) => (
+                    <div
+                      key={t.name}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "9px 14px",
+                        borderBottom:
+                          index === visibleTests.length - 1
+                            ? "none"
+                            : `1px solid #0f1b30`,
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 12,
+                          fontFamily: "monospace",
+                          color:
+                            t.status === "pass"
+                              ? "#4ade80"
+                              : t.status === "fail"
+                                ? "#f87171"
+                                : "#6b7a99",
+                        }}
+                      >
+                        {t.name}
+                      </span>
+                      <span style={{ fontSize: 14 }}>
+                        {t.status === "pass" ? "✓" : "✗"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ padding: "0 16px 14px" }}>
+                <p
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    color: dimmed,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    marginBottom: 8,
+                  }}
+                >
+                  Output
+                </p>
                 <textarea
-                  value={code}
-                  onChange={(e) => handleEditorChange(e.target.value)}
+                  ref={consoleRef}
+                  value={
+                    consolePendingRun
+                      ? `${consoleTranscript}${consolePromptInput}`
+                      : consoleTranscript
+                  }
+                  onChange={handleConsoleChange}
+                  onKeyDown={handleConsoleKeyDown}
+                  readOnly={!consolePendingRun}
+                  placeholder={
+                    consolePendingRun
+                      ? "Type input and press Enter"
+                      : isActiveFileRunnable
+                        ? "Run the lab to see output here."
+                        : `Select a ${selectedLab.language} source file to run.`
+                  }
                   spellCheck={false}
                   style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
                     width: "100%",
-                    height: "100%",
-                    padding: "16px",
-                    fontSize: 13,
-                    lineHeight: "1.6",
-                    fontFamily:
-                      "'JetBrains Mono','Fira Code','Courier New',monospace",
-                    background: "transparent",
-                    color: "transparent",
-                    caretColor: accent,
-                    border: "none",
+                    minHeight: 240,
+                    padding: 14,
+                    background: bg0,
+                    border: `1px solid ${border}`,
+                    borderRadius: 12,
+                    color: consoleMeta
+                      ? consoleMeta.isError
+                        ? "#f87171"
+                        : "#4ade80"
+                      : "#e2e8f0",
+                    fontSize: 12,
+                    fontFamily: "monospace",
+                    lineHeight: 1.55,
+                    resize: "vertical",
                     outline: "none",
-                    resize: "none",
-                    whiteSpace: "pre",
-                    overflow: "hidden",
+                    whiteSpace: "pre-wrap",
+                    overflowY: "auto",
+                    overflowX: "hidden",
                   }}
                 />
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* ── Test Results Panel ── */}
+            <div
+              style={{
+                padding: "8px 16px 10px",
+                borderTop: `1px solid ${border}`,
+              }}
+            >
+              <p
+                style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: dimmed,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  marginBottom: 4,
+                }}
+              >
+                Run Details
+              </p>
+              <p
+                style={{
+                  fontSize: 11,
+                  color: "#6b7a99",
+                  margin: "2px 0",
+                }}
+              >
+                {consoleMeta
+                  ? `Run at ${consoleMeta.time}`
+                  : "Click Run to check details."}
+              </p>
+              <p
+                style={{
+                  fontSize: 11,
+                  color: "#6b7a99",
+                  minHeight: 16,
+                }}
+              >
+                {consoleMeta ? `Runtime: ${consoleMeta.runtime}` : ""}
+              </p>
+            </div>
+
+            {/* Buttons */}
+            <div
+              style={{
+                padding: "12px 16px",
+                borderTop: `1px solid ${border}`,
+                display: "flex",
+                gap: 8,
+              }}
+            >
+              <button
+                onClick={handleRun}
+                disabled={isRunning || !isActiveFileRunnable}
+                title={
+                  isActiveFileRunnable
+                    ? "Run active file"
+                    : `Running is only available for ${supportedExtensions.map((ext) => `.${ext}`).join(", ")} files.`
+                }
+                style={{
+                  flex: 1,
+                  padding: "10px 0",
+                  background:
+                    isRunning || !isActiveFileRunnable ? "#1a2540" : "#16a34a",
+                  border: "none",
+                  borderRadius: 8,
+                  color: "#fff",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor:
+                    isRunning || !isActiveFileRunnable
+                      ? "not-allowed"
+                      : "pointer",
+                }}
+              >
+                {isRunning ? "Running…" : "▶  Run"}
+              </button>
+              <button
+                onClick={() => setShowSubmit(true)}
+                style={{
+                  flex: 1,
+                  padding: "10px 0",
+                  background: "#0369a1",
+                  border: "none",
+                  borderRadius: 8,
+                  color: "#fff",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Submit
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
+
+      {/* ── Delete Confirmation Modal ── */}
+      {showDeleteConfirm && (
         <div
           style={{
-            width: 360,
-            minWidth: 360,
-            background: bg1,
-            borderLeft: `1px solid ${border}`,
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.7)",
             display: "flex",
-            flexDirection: "column",
-            overflow: "hidden",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
           }}
         >
           <div
             style={{
-              height: panelHeaderHeight,
-              padding: "0 16px",
-              borderBottom: `1px solid ${border}`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
+              background: bg2,
+              borderRadius: 16,
+              padding: 32,
+              width: 420,
+              border: `1px solid ${border}`,
             }}
           >
-            <span style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0" }}>
-              Test Results
-            </span>
-            <span
+            <h2
               style={{
-                fontSize: 14,
+                fontSize: 18,
                 fontWeight: 700,
-                color: passed === visibleTotal ? "#4ade80" : "#f87171",
+                color: "#e2e8f0",
+                marginTop: 0,
+                marginBottom: 8,
               }}
             >
-              {passed}/{visibleTotal}
-            </span>
-          </div>
-
-          <div style={{ flex: 1, overflow: "auto", padding: "12px 0" }}>
-            <div style={{ padding: "0 16px 14px" }}>
-              <p
+              Delete File?
+            </h2>
+            <p style={{ fontSize: 13, color: muted, marginBottom: 20 }}>
+              This will permanently delete
+              <span style={{ color: accent, fontWeight: 700 }}>
+                {` ${filePendingDelete || "this file"}`}
+              </span>
+              . This action cannot be undone.
+            </p>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={cancelDeleteFile}
                 style={{
-                  fontSize: 10,
-                  fontWeight: 700,
-                  color: dimmed,
-                  letterSpacing: "0.1em",
-                  textTransform: "uppercase",
-                  marginBottom: 8,
+                  flex: 1,
+                  padding: "10px 0",
+                  background: "#1a2540",
+                  border: "none",
+                  borderRadius: 8,
+                  color: muted,
+                  fontWeight: 600,
+                  cursor: "pointer",
                 }}
               >
-                Test Results
-              </p>
-              <div
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteFile}
                 style={{
-                  border: `1px solid #0f1b30`,
-                  borderRadius: 12,
-                  overflow: "hidden",
-                  background: bg2,
+                  flex: 1,
+                  padding: "10px 0",
+                  background: "#b91c1c",
+                  border: "none",
+                  borderRadius: 8,
+                  color: "#fff",
+                  fontWeight: 600,
+                  cursor: "pointer",
                 }}
               >
-                {visibleTests.map((t, index) => (
-                  <div
-                    key={t.name}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: "9px 14px",
-                      borderBottom:
-                        index === visibleTests.length - 1
-                          ? "none"
-                          : `1px solid #0f1b30`,
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: 12,
-                        fontFamily: "monospace",
-                        color:
-                          t.status === "pass"
-                            ? "#4ade80"
-                            : t.status === "fail"
-                              ? "#f87171"
-                              : "#6b7a99",
-                      }}
-                    >
-                      {t.name}
-                    </span>
-                    <span style={{ fontSize: 14 }}>
-                      {t.status === "pass" ? "✓" : "✗"}
-                    </span>
-                  </div>
-                ))}
-              </div>
+                Delete
+              </button>
             </div>
-
-            <div style={{ padding: "0 16px 14px" }}>
-              <p
-                style={{
-                  fontSize: 10,
-                  fontWeight: 700,
-                  color: dimmed,
-                  letterSpacing: "0.1em",
-                  textTransform: "uppercase",
-                  marginBottom: 8,
-                }}
-              >
-                Output
-              </p>
-              <textarea
-                ref={consoleRef}
-                value={
-                  consolePendingRun
-                    ? `${consoleTranscript}${consolePromptInput}`
-                    : consoleTranscript
-                }
-                onChange={handleConsoleChange}
-                onKeyDown={handleConsoleKeyDown}
-                readOnly={!consolePendingRun}
-                placeholder={
-                  consolePendingRun
-                    ? "Type input and press Enter"
-                    : isActiveFileRunnable
-                      ? "Run the lab to see output here."
-                      : `Select a ${selectedLab.language} source file to run.`
-                }
-                spellCheck={false}
-                style={{
-                  width: "100%",
-                  minHeight: 240,
-                  padding: 14,
-                  background: bg0,
-                  border: `1px solid ${border}`,
-                  borderRadius: 12,
-                  color: consoleMeta
-                    ? consoleMeta.isError
-                      ? "#f87171"
-                      : "#4ade80"
-                    : "#e2e8f0",
-                  fontSize: 12,
-                  fontFamily: "monospace",
-                  lineHeight: 1.55,
-                  resize: "vertical",
-                  outline: "none",
-                  whiteSpace: "pre-wrap",
-                  overflowY: "auto",
-                  overflowX: "hidden",
-                }}
-              />
-            </div>
-          </div>
-
-          <div
-            style={{
-              padding: "8px 16px 10px",
-              borderTop: `1px solid ${border}`,
-            }}
-          >
-            <p
-              style={{
-                fontSize: 10,
-                fontWeight: 700,
-                color: dimmed,
-                letterSpacing: "0.1em",
-                textTransform: "uppercase",
-                marginBottom: 4,
-              }}
-            >
-              Run Details
-            </p>
-            <p
-              style={{
-                fontSize: 11,
-                color: "#6b7a99",
-                margin: "2px 0",
-              }}
-            >
-              {consoleMeta
-                ? `Run at ${consoleMeta.time}`
-                : "Click Run to check details."}
-            </p>
-            <p
-              style={{
-                fontSize: 11,
-                color: "#6b7a99",
-                minHeight: 16,
-              }}
-            >
-              {consoleMeta ? `Runtime: ${consoleMeta.runtime}` : ""}
-            </p>
-          </div>
-
-          {/* Buttons */}
-          <div
-            style={{
-              padding: "12px 16px",
-              borderTop: `1px solid ${border}`,
-              display: "flex",
-              gap: 8,
-            }}
-          >
-            <button
-              onClick={handleRun}
-              disabled={isRunning || !isActiveFileRunnable}
-              title={
-                isActiveFileRunnable
-                  ? "Run active file"
-                  : `Running is only available for ${supportedExtensions.map((ext) => `.${ext}`).join(", ")} files.`
-              }
-              style={{
-                flex: 1,
-                padding: "10px 0",
-                background:
-                  isRunning || !isActiveFileRunnable ? "#1a2540" : "#16a34a",
-                border: "none",
-                borderRadius: 8,
-                color: "#fff",
-                fontSize: 13,
-                fontWeight: 600,
-                cursor:
-                  isRunning || !isActiveFileRunnable
-                    ? "not-allowed"
-                    : "pointer",
-              }}
-            >
-              {isRunning ? "Running…" : "▶  Run"}
-            </button>
-            <button
-              onClick={() => setShowSubmit(true)}
-              style={{
-                flex: 1,
-                padding: "10px 0",
-                background: "#0369a1",
-                border: "none",
-                borderRadius: 8,
-                color: "#fff",
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              Submit
-            </button>
           </div>
         </div>
-      </SideBar>
+      )}
 
       {/* ── Submit Modal ── */}
       {showSubmit && (
