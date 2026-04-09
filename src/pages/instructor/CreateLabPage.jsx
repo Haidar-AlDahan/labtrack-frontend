@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import InstructorLayout from "../../components/layout/InstructorLayout";
+import TestCasesTab from "./TestCasesTab";
 
 const LABS_KEY = "labtrack_instructor_labs";
 const LANGUAGES = ["Python", "C++", "C", "Java", "JavaScript", "Go", "Rust"];
@@ -92,15 +93,17 @@ export default function CreateLabPage() {
   const [uploadingFiles, setUploadingFiles] = useState({});
   const [starterDragOver, setStarterDragOver] = useState(false);
   const [supportingDragOver, setSupportingDragOver] = useState(false);
+  const [testCases, setTestCases] = useState([]);
+  const [activeTab, setActiveTab] = useState("details"); // "details" | "testcases"
 
   // Use a stable ID for the current lab session
   const currentLabIdRef = useRef(labId || Date.now().toString());
 
   // Refs to hold latest values for the auto-save interval (avoids stale closure)
-  const latestDataRef = useRef({ form, starterFiles, supportingFiles, labStatus });
+  const latestDataRef = useRef({ form, starterFiles, supportingFiles, labStatus, testCases });
   useEffect(() => {
-    latestDataRef.current = { form, starterFiles, supportingFiles, labStatus };
-  }, [form, starterFiles, supportingFiles, labStatus]);
+    latestDataRef.current = { form, starterFiles, supportingFiles, labStatus, testCases };
+  }, [form, starterFiles, supportingFiles, labStatus, testCases]);
 
   const starterInputRef = useRef(null);
   const supportingInputRef = useRef(null);
@@ -122,13 +125,14 @@ export default function CreateLabPage() {
       });
       setStarterFiles(lab.starterFiles || []);
       setSupportingFiles(lab.supportingFiles || []);
+      setTestCases(lab.testCases || []);
       setLabStatus(lab.status || "draft");
       if (lab.updatedAt) setLastSaved(new Date(lab.updatedAt));
     }
   }, [labId, isEditing]);
 
   const saveToDisk = useCallback(
-    (formData, starter, supporting, status, silent = false) => {
+    (formData, starter, supporting, status, tcs, silent = false) => {
       if (!formData.title && !isEditing) return false;
       const stored = JSON.parse(localStorage.getItem(LABS_KEY) || "[]");
       const id = currentLabIdRef.current;
@@ -142,11 +146,12 @@ export default function CreateLabPage() {
         title: formData.title,
         instructions: formData.instructions,
         dueDate: formData.dueDate,
-        points: parseInt(formData.points) || 0,
+        points: Number.parseInt(formData.points) || 0,
         difficulty: formData.difficulty,
         languages: formData.languages,
         starterFiles: starter,
         supportingFiles: supporting,
+        testCases: tcs,
         status,
         createdAt: existing ? existing.createdAt : now,
         updatedAt: now,
@@ -171,10 +176,10 @@ export default function CreateLabPage() {
   // Auto-save every 2 minutes
   useEffect(() => {
     const interval = setInterval(() => {
-      const { form: f, starterFiles: sf, supportingFiles: spf, labStatus: ls } =
+      const { form: f, starterFiles: sf, supportingFiles: spf, labStatus: ls, testCases: tcs } =
         latestDataRef.current;
       if (!f.title) return;
-      saveToDisk(f, sf, spf, ls, true);
+      saveToDisk(f, sf, spf, ls, tcs, true);
       showToast("info", "Auto-saved");
     }, AUTO_SAVE_INTERVAL_MS);
     return () => clearInterval(interval);
@@ -217,6 +222,10 @@ export default function CreateLabPage() {
       errs.languages = "Select at least one programming language";
     }
 
+    if (forPublish && testCases.length < 3) {
+      errs.testCases = `At least 3 test cases are required (currently ${testCases.length})`;
+    }
+
     const totalBytes = [...starterFiles, ...supportingFiles].reduce(
       (sum, f) => sum + f.size,
       0,
@@ -240,7 +249,7 @@ export default function CreateLabPage() {
     setErrors(blockingErrs);
     if (Object.keys(blockingErrs).length > 0) return;
 
-    saveToDisk(form, starterFiles, supportingFiles, "draft");
+    saveToDisk(form, starterFiles, supportingFiles, "draft", testCases);
   };
 
   const handlePublishClick = () => {
@@ -257,7 +266,7 @@ export default function CreateLabPage() {
     setIsPublishing(true);
     // Simulate network call
     setTimeout(() => {
-      saveToDisk(form, starterFiles, supportingFiles, "active");
+      saveToDisk(form, starterFiles, supportingFiles, "active", testCases);
       setIsPublishing(false);
       setShowPublishConfirm(false);
     }, 900);
@@ -626,22 +635,122 @@ export default function CreateLabPage() {
           </div>
         </div>
 
-        {/* Global file size error */}
-        {errors.files && (
-          <div
-            style={{
-              background: "rgba(239,68,68,0.1)",
-              border: "1px solid rgba(239,68,68,0.25)",
-              borderRadius: 10,
-              padding: "10px 14px",
-              color: "#f87171",
-              fontSize: 13,
-              marginBottom: 16,
-            }}
-          >
-            ⚠ {errors.files}
+        {/* ── Tab navigation ── */}
+        <div
+          style={{
+            display: "flex",
+            gap: 0,
+            marginBottom: 20,
+            background: "#0a1628",
+            border: "1px solid #1a2540",
+            borderRadius: 12,
+            padding: 4,
+            width: "fit-content",
+          }}
+        >
+          {[
+            { key: "details", label: "Lab Details", icon: "📋" },
+            {
+              key: "testcases",
+              label: `Test Cases`,
+              icon: "🧪",
+              badge: testCases.length,
+            },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "8px 18px",
+                borderRadius: 9,
+                border: "none",
+                background: activeTab === tab.key ? "#10213f" : "transparent",
+                color: activeTab === tab.key ? "#e2e8f0" : "#64748b",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.15s",
+              }}
+            >
+              <span>{tab.icon}</span>
+              {tab.label}
+              {tab.badge > 0 && (
+                <span
+                  style={{
+                    padding: "1px 7px",
+                    borderRadius: 99,
+                    fontSize: 11,
+                    background:
+                      activeTab === tab.key
+                        ? "rgba(34,211,238,0.15)"
+                        : "rgba(71,85,105,0.3)",
+                    color: activeTab === tab.key ? "#22d3ee" : "#64748b",
+                  }}
+                >
+                  {tab.badge}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Error banners */}
+        {(errors.files || errors.testCases) && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+            {errors.files && (
+              <div
+                style={{
+                  background: "rgba(239,68,68,0.1)",
+                  border: "1px solid rgba(239,68,68,0.25)",
+                  borderRadius: 10,
+                  padding: "10px 14px",
+                  color: "#f87171",
+                  fontSize: 13,
+                }}
+              >
+                ⚠ {errors.files}
+              </div>
+            )}
+            {errors.testCases && (
+              <div
+                style={{
+                  background: "rgba(239,68,68,0.1)",
+                  border: "1px solid rgba(239,68,68,0.25)",
+                  borderRadius: 10,
+                  padding: "10px 14px",
+                  color: "#f87171",
+                  fontSize: 13,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <span>⚠ {errors.testCases}</span>
+                <button
+                  onClick={() => setActiveTab("testcases")}
+                  style={{
+                    background: "rgba(239,68,68,0.15)",
+                    border: "1px solid rgba(239,68,68,0.3)",
+                    borderRadius: 6,
+                    color: "#f87171",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    padding: "3px 9px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Go to Test Cases →
+                </button>
+              </div>
+            )}
           </div>
         )}
+
+        {/* ── Details tab ── */}
+        {activeTab === "details" && (<>
 
         {/* ── SECTION 1: Basic Information ── */}
         <div style={sectionStyle}>
@@ -990,6 +1099,19 @@ export default function CreateLabPage() {
           </div>
         </div>
 
+        </>)}
+
+        {/* ── Test Cases tab ── */}
+        {activeTab === "testcases" && (
+          <TestCasesTab
+            testCases={testCases}
+            setTestCases={setTestCases}
+            labPoints={form.points}
+            labLanguages={form.languages}
+            showToast={showToast}
+          />
+        )}
+
         {/* Bottom action bar */}
         <div
           style={{
@@ -1103,6 +1225,7 @@ export default function CreateLabPage() {
                 { icon: "📅", label: "Due", value: form.dueDate ? new Date(form.dueDate).toLocaleString() : "—" },
                 { icon: "🏆", label: "Points", value: `${form.points || 0} pts` },
                 { icon: "💻", label: "Languages", value: form.languages.join(", ") || "—" },
+                { icon: "🧪", label: "Tests", value: `${testCases.length} test case${testCases.length !== 1 ? "s" : ""}` },
               ].map((row) => (
                 <div
                   key={row.label}
