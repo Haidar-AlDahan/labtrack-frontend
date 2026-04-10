@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 const NAV_ITEMS = [
   { label: "User Management", icon: "👥", path: "/admin/users" },
   { label: "Course Management", icon: "📚", path: "/admin/courses" },
-  { label: "Department Settings", icon: "🏛️", path: "/admin/departments", disabled: true },
+  { label: "Department Settings", icon: "🏛️", path: "/admin/departments" },
   { label: "System Settings", icon: "⚙️", path: "/admin/settings", disabled: true },
   { label: "System Monitor", icon: "📊", path: "/admin/monitor", disabled: true },
   { label: "Analytics", icon: "📈", path: "/admin/analytics", disabled: true },
