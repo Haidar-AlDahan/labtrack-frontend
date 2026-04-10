@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 const NAV_ITEMS = [
   { label: "User Management", icon: "👥", path: "/admin/users" },
-  { label: "Course Management", icon: "📚", path: "/admin/courses", disabled: true },
+  { label: "Course Management", icon: "📚", path: "/admin/courses" },
   { label: "Department Settings", icon: "🏛️", path: "/admin/departments", disabled: true },
   { label: "System Settings", icon: "⚙️", path: "/admin/settings", disabled: true },
   { label: "System Monitor", icon: "📊", path: "/admin/monitor", disabled: true },
@@ -68,7 +68,9 @@ export default function AdminSideBar() {
             (location.pathname === item.path ||
               location.pathname.startsWith(`${item.path}/`));
           const isHighlighted = isActive || hoveredNav === item.label;
-          const labelColor = item.disabled ? dimmed : isHighlighted ? "#e2e8f0" : muted;
+          let labelColor = muted;
+          if (item.disabled) labelColor = dimmed;
+          else if (isHighlighted) labelColor = "#e2e8f0";
 
           return (
             <button
