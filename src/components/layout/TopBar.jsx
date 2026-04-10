@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 
-function TopBar({ title = "", course = "SWE 363 - SEC 03" }) {
+function TopBar({ title = ""}) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 

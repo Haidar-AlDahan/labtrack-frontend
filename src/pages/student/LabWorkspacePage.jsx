@@ -7,7 +7,6 @@ import TopBar from "../../components/layout/TopBar";
 const LAB_DATA = {
   id: 9,
   title: "Lab 9 — Binary Trees",
-  course: "ICS 202 - SEC 03",
   language: "Python",
   dueDate: "Apr 12, 2026",
   description: `Implement a Binary Search Tree (BST) in Python.
@@ -78,7 +77,6 @@ const LAB_DATA_BY_ID = {
   10: {
     id: 10,
     title: "Lab 10 — Graph Traversal",
-    course: "ICS 202 - SEC 03",
     language: "Python",
     dueDate: "Apr 19, 2026",
     description: `Implement graph traversal methods for an adjacency-list graph.
@@ -134,7 +132,6 @@ if __name__ == "__main__":
   11: {
     id: 11,
     title: "Lab 11 — Hash Tables",
-    course: "ICS 202 - SEC 03",
     language: "Python",
     dueDate: "Apr 26, 2026",
     description: `Build a hash table using chaining.
@@ -368,8 +365,6 @@ export default function LabWorkspacePage() {
   const [activeFile, setActiveFile] = useState(() => {
     return initialSolutionFile;
   });
-  const [primarySolutionFile, setPrimarySolutionFile] =
-    useState(initialSolutionFile);
   const [fileContents, setFileContents] = useState(() =>
     buildInitialFileContents(selectedLab.files, selectedLab.starterCode),
   );
@@ -405,7 +400,6 @@ export default function LabWorkspacePage() {
     setFiles(selectedLab.files);
     setOpenFiles(selectedLab.files);
     setActiveFile(nextSolutionFile);
-    setPrimarySolutionFile(nextSolutionFile);
     setFileContents(
       buildInitialFileContents(selectedLab.files, selectedLab.starterCode),
     );
@@ -479,11 +473,6 @@ export default function LabWorkspacePage() {
     });
     setActiveFile((currentActiveFile) =>
       currentActiveFile === renamingFile ? nextName : currentActiveFile,
-    );
-    setPrimarySolutionFile((currentPrimarySolutionFile) =>
-      currentPrimarySolutionFile === renamingFile
-        ? nextName
-        : currentPrimarySolutionFile,
     );
     setRenamingFile(null);
     setRenameDraft("");
@@ -593,10 +582,6 @@ export default function LabWorkspacePage() {
       setActiveFile(remainingOpenFiles[0] ?? remainingFiles[0] ?? null);
     }
 
-    if (primarySolutionFile === fileToDelete) {
-      setPrimarySolutionFile(remainingFiles[0] ?? null);
-    }
-
     if (renamingFile === fileToDelete) {
       setRenamingFile(null);
       setRenameDraft("");
@@ -644,7 +629,6 @@ export default function LabWorkspacePage() {
     setConsoleMeta(null);
 
     setTimeout(() => {
-      const providedInput = "";
       const sourceCode = fileContents[activeFile] ?? "";
       const hasInsert =
         sourceCode.includes("self.root") &&
@@ -699,8 +683,7 @@ export default function LabWorkspacePage() {
         return;
       }
 
-      const inputLine = providedInput ? `>>> ${providedInput}\n` : "";
-      setConsoleTranscript(`${inputLine}${outputText}`);
+      setConsoleTranscript(outputText);
       setConsoleMeta({
         isError,
         time: new Date().toLocaleTimeString(),
@@ -916,7 +899,7 @@ export default function LabWorkspacePage() {
           flexDirection: "column",
         }}
       >
-        <TopBar title={pageTitle} course={selectedLab.course} />
+        <TopBar title={pageTitle} />
 
         {/* ── Body ── */}
         <main
@@ -1634,8 +1617,7 @@ export default function LabWorkspacePage() {
               <span style={{ color: accent, fontWeight: 700 }}>
                 {passed}/{visibleTotal}
               </span>{" "}
-              visible tests passing. Hidden tests will be evaluated after
-              submission.
+              Tests passed. Grade will be evaluated after submission.
             </p>
             <div style={{ display: "flex", gap: 10 }}>
               <button
