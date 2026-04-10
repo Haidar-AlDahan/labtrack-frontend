@@ -397,6 +397,20 @@ export default function SubmissionsPage() {
               )}
             </button>
 
+            {/* Plagiarism Check */}
+            <button
+              onClick={() => navigate(`/instructor/labs/${labId}/plagiarism`)}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "7px 14px", borderRadius: 9,
+                border: "1px solid rgba(248,113,113,0.3)",
+                background: "rgba(248,113,113,0.07)",
+                color: "#f87171", fontSize: 12, fontWeight: 600, cursor: "pointer",
+              }}
+            >
+              🔍 Plagiarism Check
+            </button>
+
             {/* Bulk Grade */}
             <button
               onClick={() => setShowBulk(true)}
