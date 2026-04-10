@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import SideBar from "../../components/layout/SideBar";
 import TopBar from "../../components/layout/TopBar";
 
@@ -348,9 +348,11 @@ function sidebarFileIcon(name) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function LabWorkspacePage() {
+  const location = useLocation();
   const navigate = useNavigate();
   const { labId } = useParams();
   const selectedLab = LAB_DATA_BY_ID[Number(labId)] ?? LAB_DATA;
+  const restoredSnapshot = location.state?.restoredSnapshot;
   const currentLabId = String(selectedLab.id);
   const titleSuffix = selectedLab.title.includes("—")
     ? selectedLab.title.split("—").slice(1).join("—").trim()
@@ -382,7 +384,6 @@ export default function LabWorkspacePage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [filePendingDelete, setFilePendingDelete] = useState(null);
   const [submitted, setSubmitted] = useState(false);
-  const [lastSaved, setLastSaved] = useState(null);
   const [descCollapsed, setDescCollapsed] = useState(false);
   const [isAddingPage, setIsAddingPage] = useState(false);
   const [newPageName, setNewPageName] = useState("");
@@ -392,15 +393,6 @@ export default function LabWorkspacePage() {
   const [hoveredSidebarFile, setHoveredSidebarFile] = useState(null);
   const [draggedTab, setDraggedTab] = useState(null);
   const [dragOverTab, setDragOverTab] = useState(null);
-
-  // Auto-save simulation
-  useEffect(() => {
-    const iv = setInterval(
-      () => setLastSaved(new Date().toLocaleTimeString()),
-      30000,
-    );
-    return () => clearInterval(iv);
-  }, []);
 
   useEffect(() => {
     const nextSolutionFile =
@@ -422,7 +414,18 @@ export default function LabWorkspacePage() {
     setConsolePromptInput("");
     setConsolePendingRun(null);
     setConsoleMeta(null);
-  }, [selectedLab]);
+
+    if (
+      restoredSnapshot &&
+      Number(restoredSnapshot.labId) === Number(selectedLab.id) &&
+      typeof restoredSnapshot.code === "string"
+    ) {
+      setFileContents((currentContents) => ({
+        ...currentContents,
+        [nextSolutionFile]: restoredSnapshot.code,
+      }));
+    }
+  }, [restoredSnapshot, selectedLab]);
 
   const code = fileContents[activeFile] ?? "";
 
@@ -913,11 +916,7 @@ export default function LabWorkspacePage() {
           flexDirection: "column",
         }}
       >
-        <TopBar
-          title={pageTitle}
-          lastSaved={lastSaved}
-          course={selectedLab.course}
-        />
+        <TopBar title={pageTitle} course={selectedLab.course} />
 
         {/* ── Body ── */}
         <main
