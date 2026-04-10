@@ -329,6 +329,20 @@ function LoginPage() {
                 >
                   Instructor
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setRegisterData({ ...registerData, role: "admin" })
+                  }
+                  className={`flex-1 rounded-md py-2 text-sm ${
+                    registerData.role === "admin"
+                      ? "bg-cyan-500 text-white"
+                      : "bg-[#0f1b33] text-gray-400"
+                  }`}
+                >
+                  Admin
+                </button>
               </div>
             </div>
             <button
