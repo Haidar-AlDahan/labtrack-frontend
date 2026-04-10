@@ -169,8 +169,8 @@ export default function PlagiarismPage() {
 
   // ── Load lab + submissions ──────────────────────────────────────────────────
   useEffect(() => {
-    const labs = JSON.parse(localStorage.getItem(LABS_KEY) || "{}");
-    const found = labs[labId];
+    const labs = JSON.parse(localStorage.getItem(LABS_KEY) || "[]");
+    const found = labs.find((l) => l.id === labId);
     if (found) setLab(found);
 
     const allSubs = JSON.parse(localStorage.getItem(SUBS_KEY) || "{}");
@@ -214,8 +214,6 @@ export default function PlagiarismPage() {
   }
 
   function finishScan() {
-    const labs = JSON.parse(localStorage.getItem(LABS_KEY) || "{}");
-    const currentLab = labs[labId] || lab;
     const allSubs = JSON.parse(localStorage.getItem(SUBS_KEY) || "{}");
     const labSubs = allSubs[labId] || {};
 
