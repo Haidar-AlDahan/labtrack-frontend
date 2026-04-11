@@ -7,6 +7,13 @@ import HistoryPage from "../pages/student/HistoryPage.jsx";
 import HistoryLabPage from "../pages/student/HistoryLabPage.jsx";
 import GradesPage from "../pages/student/GradesPage.jsx";
 import UserManagementPage from "../pages/admin/UserManagementPage.jsx";
+import CourseManagementPage from "../pages/admin/CourseManagementPage.jsx";
+import DepartmentSettingsPage from "../pages/admin/DepartmentSettingsPage.jsx";
+import SystemSettingsPage from "../pages/admin/SystemSettingsPage.jsx";
+import SystemMonitorPage from "../pages/admin/SystemMonitorPage.jsx";
+import AnalyticsDashboardPage from "../pages/admin/AnalyticsDashboardPage.jsx";
+import SecurityAccessPage from "../pages/admin/SecurityAccessPage.jsx";
+import BackupRecoveryPage from "../pages/admin/BackupRecoveryPage.jsx";
 import LabsManagementPage from "../pages/instructor/LabsManagementPage.jsx";
 import CreateLabPage from "../pages/instructor/CreateLabPage.jsx";
 import SubmissionsPage from "../pages/instructor/SubmissionsPage.jsx";
@@ -26,6 +33,13 @@ function AppRouter() {
         <Route path="/history/:labId" element={<HistoryLabPage />} />
         <Route path="/grades" element={<GradesPage />} />
         <Route path="/admin/users" element={<UserManagementPage />} />
+        <Route path="/admin/courses" element={<CourseManagementPage />} />
+        <Route path="/admin/departments" element={<DepartmentSettingsPage />} />
+        <Route path="/admin/settings" element={<SystemSettingsPage />} />
+        <Route path="/admin/monitor" element={<SystemMonitorPage />} />
+        <Route path="/admin/analytics" element={<AnalyticsDashboardPage />} />
+        <Route path="/admin/security" element={<SecurityAccessPage />} />
+        <Route path="/admin/backup" element={<BackupRecoveryPage />} />
         {/* Instructor routes */}
         <Route path="/instructor/labs" element={<LabsManagementPage />} />
         <Route path="/instructor/labs/create" element={<CreateLabPage />} />

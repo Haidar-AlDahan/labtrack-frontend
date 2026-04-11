@@ -57,7 +57,9 @@ function LoginPage() {
       }
        localStorage.setItem("currentUser", JSON.stringify(user));
 
-      if (user.role === "instructor") {
+      if (user.role === "admin") {
+        navigate("/admin/users");
+      } else if (user.role === "instructor") {
         navigate("/instructor/labs");
       } else {
         navigate("/dashboard");
@@ -326,6 +328,20 @@ function LoginPage() {
                   }`}
                 >
                   Instructor
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setRegisterData({ ...registerData, role: "admin" })
+                  }
+                  className={`flex-1 rounded-md py-2 text-sm ${
+                    registerData.role === "admin"
+                      ? "bg-cyan-500 text-white"
+                      : "bg-[#0f1b33] text-gray-400"
+                  }`}
+                >
+                  Admin
                 </button>
               </div>
             </div>
