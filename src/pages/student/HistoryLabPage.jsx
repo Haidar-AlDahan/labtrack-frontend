@@ -219,6 +219,7 @@ export default function HistoryLabPage() {
   const navigate = useNavigate();
   const { labId: labIdParam } = useParams();
   const [compareVersion, setCompareVersion] = useState(null);
+  const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
   const normalizedLabId = String(labIdParam || "").replace(/^lab/i, "");
   const labId = Number(normalizedLabId) || 9;
 
@@ -601,17 +602,7 @@ export default function HistoryLabPage() {
               )}
               {selected && (
                 <button
-                  onClick={() =>
-                    navigate(`/labs/${selected.labId || labId}`, {
-                      state: {
-                        restoredSnapshot: {
-                          versionId: selected.id,
-                          labId: selected.labId || labId,
-                          code: selected.code || "",
-                        },
-                      },
-                    })
-                  }
+                  onClick={() => setShowRestoreConfirm(true)}
                   style={{
                     padding: "8px 16px",
                     background: "#1a2540",
@@ -639,6 +630,60 @@ export default function HistoryLabPage() {
           </div>
         </div>
       </div>
+
+      {/* Restore Confirmation Modal */}
+      {showRestoreConfirm && selected && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)",
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000,
+        }}>
+          <div style={{
+            background: "#0b1424", border: "1px solid #1a2540", borderRadius: 12,
+            padding: "28px 32px", maxWidth: 420, width: "90%",
+          }}>
+            <h3 style={{ margin: "0 0 12px", fontSize: 17, fontWeight: 700, color: "#e2e8f0" }}>
+              Restore Version?
+            </h3>
+            <p style={{ margin: "0 0 24px", fontSize: 13, color: "#94a3b8", lineHeight: 1.6 }}>
+              This will replace your current code with <strong style={{ color: "#e2e8f0" }}>{selected.label}</strong>.
+              Your unsaved changes will be lost. Continue?
+            </p>
+            <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
+              <button
+                onClick={() => setShowRestoreConfirm(false)}
+                style={{
+                  padding: "8px 20px", background: "transparent", color: "#94a3b8",
+                  border: "1px solid #1a2540", borderRadius: 6, fontSize: 13,
+                  fontWeight: 600, cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowRestoreConfirm(false);
+                  navigate(`/labs/${selected.labId || labId}`, {
+                    state: {
+                      restoredSnapshot: {
+                        versionId: selected.id,
+                        labId: selected.labId || labId,
+                        code: selected.code || "",
+                      },
+                    },
+                  });
+                }}
+                style={{
+                  padding: "8px 20px", background: "#0369a1", color: "#e2e8f0",
+                  border: "none", borderRadius: 6, fontSize: 13,
+                  fontWeight: 600, cursor: "pointer",
+                }}
+              >
+                Restore
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
