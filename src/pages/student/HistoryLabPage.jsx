@@ -103,19 +103,13 @@ function buildSimpleDiff(oldCode, newCode) {
   return diffLines;
 }
 
-// Sample submission history data
-const SUBMISSION_HISTORY = {
-  9: [
-    {
-      id: "v4",
-      labId: 9,
-      label: "v4 — Latest",
-      timestamp: "Mar 01 · 14:32",
-      status: "current",
-      testsPassed: 3,
-      totalTests: 5,
-      score: 60,
-      code: `class Node:
+const VERSIONS_KEY = "labtrack_versions";
+
+const SEED_HISTORY_9 = [
+  {
+    id: "v4", labId: 9, label: "v4 — Latest", timestamp: "Mar 01 · 14:32",
+    status: "current", testsPassed: 3, totalTests: 5, score: 60,
+    code: `class Node:
     def __init__(self, val):
         self.val = val
         self.left = None
@@ -146,23 +140,17 @@ class BinaryTree:
     def inorder(self, node=None):
         if node is None:
             node = self.root
-        
+
         if node.left:
             self.inorder(node.left)
         print(node.val)
         if node.right:
             self.inorder(node.right)`,
-    },
-    {
-      id: "v3",
-      labId: 9,
-      label: "v3",
-      timestamp: "Mar 01 · 13:10",
-      status: "submitted",
-      testsPassed: 2,
-      totalTests: 5,
-      score: 40,
-      code: `class Node:
+  },
+  {
+    id: "v3", labId: 9, label: "v3", timestamp: "Mar 01 · 13:10",
+    status: "submitted", testsPassed: 2, totalTests: 5, score: 40,
+    code: `class Node:
     def __init__(self, val):
         self.val = val
         self.left = None
@@ -184,17 +172,11 @@ class BinaryTree:
                 self._insert_recursive(node.left, val)
             else:
                 node.left = Node(val)`,
-    },
-    {
-      id: "v2",
-      labId: 9,
-      label: "v2 — Submitted",
-      timestamp: "Feb 28 · 22:45",
-      status: "submitted",
-      testsPassed: 1,
-      totalTests: 5,
-      score: 20,
-      code: `class Node:
+  },
+  {
+    id: "v2", labId: 9, label: "v2 — Submitted", timestamp: "Feb 28 · 22:45",
+    status: "submitted", testsPassed: 1, totalTests: 5, score: 20,
+    code: `class Node:
     def __init__(self, val):
         self.val = val
         self.left = None
@@ -206,17 +188,11 @@ class BinaryTree:
 
     def insert(self, val):
         # TODO: implement insert`,
-    },
-    {
-      id: "v1",
-      labId: 9,
-      label: "v1 — Initial",
-      timestamp: "Feb 25 · 09:00",
-      status: "initial",
-      testsPassed: 0,
-      totalTests: 5,
-      score: 0,
-      code: `class Node:
+  },
+  {
+    id: "v1", labId: 9, label: "v1 — Initial", timestamp: "Feb 25 · 09:00",
+    status: "initial", testsPassed: 0, totalTests: 5, score: 0,
+    code: `class Node:
     def __init__(self, val):
         self.val = val
         self.left = None
@@ -225,19 +201,29 @@ class BinaryTree:
 class BinaryTree:
     def __init__(self):
         self.root = None`,
-    },
-  ],
-};
+  },
+];
+
+function loadVersions(labId) {
+  try {
+    const all = JSON.parse(localStorage.getItem(VERSIONS_KEY) || "{}");
+    if (all[labId] && all[labId].length > 0) return all[labId];
+  } catch (e) {
+    console.warn("Could not read versions", e);
+  }
+  if (labId === 9) return SEED_HISTORY_9;
+  return [];
+}
 
 export default function HistoryLabPage() {
   const navigate = useNavigate();
   const { labId: labIdParam } = useParams();
-  const [selectedVersion, setSelectedVersion] = useState("v4");
   const [compareVersion, setCompareVersion] = useState(null);
   const normalizedLabId = String(labIdParam || "").replace(/^lab/i, "");
   const labId = Number(normalizedLabId) || 9;
 
-  const submissions = SUBMISSION_HISTORY[labId] || [];
+  const submissions = loadVersions(labId);
+  const [selectedVersion, setSelectedVersion] = useState(submissions[0]?.id ?? "v1");
   const selected = submissions.find((s) => s.id === selectedVersion);
   const selectedIndex = submissions.findIndex((s) => s.id === selectedVersion);
   const previousVersion =
@@ -613,43 +599,41 @@ export default function HistoryLabPage() {
                   Compare {previousVersion.id}
                 </button>
               )}
-              {selectedVersion !== "v14" && (
-                <>
-                  <button
-                    onClick={() =>
-                      navigate(`/labs/${selected?.labId || labId}`, {
-                        state: {
-                          restoredSnapshot: {
-                            versionId: selected?.id,
-                            labId: selected?.labId || labId,
-                            code: selected?.code || "",
-                          },
+              {selected && (
+                <button
+                  onClick={() =>
+                    navigate(`/labs/${selected.labId || labId}`, {
+                      state: {
+                        restoredSnapshot: {
+                          versionId: selected.id,
+                          labId: selected.labId || labId,
+                          code: selected.code || "",
                         },
-                      })
-                    }
-                    style={{
-                      padding: "8px 16px",
-                      background: "#1a2540",
-                      color: "#e2e8f0",
-                      border: "1px solid #0369a1",
-                      borderRadius: 6,
-                      fontSize: 12,
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      transition: "all 0.2s",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.target.style.background = "#0369a1";
-                      e.target.style.color = "#e2e8f0";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.style.background = "#1a2540";
-                      e.target.style.color = "#e2e8f0";
-                    }}
-                  >
-                    Restore {selected?.label}
-                  </button>
-                </>
+                      },
+                    })
+                  }
+                  style={{
+                    padding: "8px 16px",
+                    background: "#1a2540",
+                    color: "#e2e8f0",
+                    border: "1px solid #0369a1",
+                    borderRadius: 6,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = "#0369a1";
+                    e.target.style.color = "#e2e8f0";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = "#1a2540";
+                    e.target.style.color = "#e2e8f0";
+                  }}
+                >
+                  Restore {selected.label}
+                </button>
               )}
             </div>
           </div>
