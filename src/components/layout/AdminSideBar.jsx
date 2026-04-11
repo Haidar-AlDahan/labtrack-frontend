@@ -5,7 +5,7 @@ const NAV_ITEMS = [
   { label: "User Management", icon: "👥", path: "/admin/users" },
   { label: "Course Management", icon: "📚", path: "/admin/courses" },
   { label: "Department Settings", icon: "🏛️", path: "/admin/departments" },
-  { label: "System Settings", icon: "⚙️", path: "/admin/settings", disabled: true },
+  { label: "System Settings", icon: "⚙️", path: "/admin/settings" },
   { label: "System Monitor", icon: "📊", path: "/admin/monitor", disabled: true },
   { label: "Analytics", icon: "📈", path: "/admin/analytics", disabled: true },
   { label: "Security & Access", icon: "🔒", path: "/admin/security", disabled: true },
