@@ -8,6 +8,7 @@ import UserManagementPage from "../pages/admin/UserManagementPage.jsx";
 import CourseManagementPage from "../pages/admin/CourseManagementPage.jsx";
 import DepartmentSettingsPage from "../pages/admin/DepartmentSettingsPage.jsx";
 import SystemSettingsPage from "../pages/admin/SystemSettingsPage.jsx";
+import SystemMonitorPage from "../pages/admin/SystemMonitorPage.jsx";
 import LabsManagementPage from "../pages/instructor/LabsManagementPage.jsx";
 import CreateLabPage from "../pages/instructor/CreateLabPage.jsx";
 import SubmissionsPage from "../pages/instructor/SubmissionsPage.jsx";
@@ -28,6 +29,7 @@ function AppRouter() {
         <Route path="/admin/courses" element={<CourseManagementPage />} />
         <Route path="/admin/departments" element={<DepartmentSettingsPage />} />
         <Route path="/admin/settings" element={<SystemSettingsPage />} />
+        <Route path="/admin/monitor" element={<SystemMonitorPage />} />
         {/* Instructor routes */}
         <Route path="/instructor/labs" element={<LabsManagementPage />} />
         <Route path="/instructor/labs/create" element={<CreateLabPage />} />
