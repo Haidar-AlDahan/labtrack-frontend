@@ -388,6 +388,10 @@ export default function LabWorkspacePage() {
   const [versionDesc, setVersionDesc] = useState("");
   const [versionDescErr, setVersionDescErr] = useState("");
   const [versionToast, setVersionToast] = useState("");
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareEmail, setShareEmail] = useState("");
+  const [shareEmailErr, setShareEmailErr] = useState("");
+  const [shareToast, setShareToast] = useState("");
   const [descCollapsed, setDescCollapsed] = useState(false);
   const [isAddingPage, setIsAddingPage] = useState(false);
   const [newPageName, setNewPageName] = useState("");
@@ -800,6 +804,57 @@ export default function LabWorkspacePage() {
     } catch (e) {
       console.warn("Could not save version", e);
       setVersionDescErr("Failed to save version. Please try again.");
+    }
+  };
+
+  const handleShare = () => {
+    const email = shareEmail.trim().toLowerCase();
+    if (!email.endsWith("@kfupm.edu.sa")) {
+      setShareEmailErr("Must be a valid @kfupm.edu.sa email address.");
+      return;
+    }
+    try {
+      const user = JSON.parse(localStorage.getItem("currentUser") || "{}");
+      if ((user.email || "").toLowerCase() === email) {
+        setShareEmailErr("You cannot share a review with yourself.");
+        return;
+      }
+      const uid = user.id || user.email || "guest";
+      const PEER_REVIEWS_KEY = "labtrack_peer_reviews";
+      const all = JSON.parse(localStorage.getItem(PEER_REVIEWS_KEY) || "[]");
+      const existing = all.filter(
+        (r) => r.ownerUid === uid && r.labId === selectedLab.id && r.reviewerEmail === email
+      );
+      if (existing.length >= 3) {
+        setShareEmailErr("Maximum 3 collaborators per lab reached.");
+        return;
+      }
+      const currentCode = fileContents[activeFile] ?? "";
+      const passed2 = testResults.filter((r) => r.status === "pass").length;
+      const total2  = testResults.filter((r) => r.status !== "hidden").length;
+      const record = {
+        id: `pr_${Date.now()}`,
+        labId: selectedLab.id,
+        labTitle: selectedLab.title,
+        ownerUid: uid,
+        ownerName: user.fullName || user.email || "Student",
+        reviewerEmail: email,
+        files: [activeFile || "solution.py"],
+        fileContents: { [activeFile || "solution.py"]: currentCode },
+        testsPassed: `${passed2}/${total2}`,
+        sharedAt: new Date().toISOString(),
+        dueDate: new Date(Date.now() + 7 * 86400000).toISOString(),
+        status: "pending",
+        review: null,
+      };
+      localStorage.setItem(PEER_REVIEWS_KEY, JSON.stringify([...all, record]));
+      setShowShareModal(false);
+      setShareEmail("");
+      setShareToast(`Shared with ${email} for review`);
+      setTimeout(() => setShareToast(""), 3500);
+    } catch (e) {
+      console.warn("Could not save peer review share", e);
+      setShareEmailErr("Failed to share. Please try again.");
     }
   };
 
@@ -1578,6 +1633,22 @@ export default function LabWorkspacePage() {
                 💾 Save Version
               </button>
               <button
+                onClick={() => { setShareEmail(""); setShareEmailErr(""); setShowShareModal(true); }}
+                style={{
+                  flex: 1,
+                  padding: "10px 0",
+                  background: "transparent",
+                  border: `1px solid ${border}`,
+                  borderRadius: 8,
+                  color: muted,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                👥 Share for Review
+              </button>
+              <button
                 onClick={() => setShowSubmit(true)}
                 style={{
                   flex: 1,
@@ -1666,6 +1737,81 @@ export default function LabWorkspacePage() {
                 }}
               >
                 Save Version
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Share toast ── */}
+      {shareToast && (
+        <div style={{
+          position: "fixed", bottom: 32, left: "50%", transform: "translateX(-50%)",
+          background: "#0369a1", color: "#fff",
+          borderRadius: 10, padding: "12px 24px",
+          fontSize: 13, fontWeight: 600, zIndex: 2000,
+          boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+          whiteSpace: "nowrap",
+        }}>
+          👥 {shareToast}
+        </div>
+      )}
+
+      {/* ── Share for Review Modal ── */}
+      {showShareModal && (
+        <div style={{
+          position: "fixed", inset: 0,
+          background: "rgba(0,0,0,0.7)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          zIndex: 1000,
+        }}>
+          <div style={{
+            background: bg2, borderRadius: 16, padding: 32, width: 440,
+            border: `1px solid ${border}`,
+          }}>
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: "#e2e8f0", marginTop: 0, marginBottom: 8 }}>
+              Share Code for Peer Review
+            </h2>
+            <p style={{ fontSize: 13, color: muted, marginBottom: 20 }}>
+              Enter your lab partner's KFUPM email. They will be able to view your code and submit a review.
+            </p>
+            <input
+              autoFocus
+              type="email"
+              value={shareEmail}
+              onChange={(e) => { setShareEmail(e.target.value); setShareEmailErr(""); }}
+              onKeyDown={(e) => { if (e.key === "Enter") { handleShare(); } else if (e.key === "Escape") { setShowShareModal(false); } }}
+              placeholder="e.g. s202312345@kfupm.edu.sa"
+              style={{
+                width: "100%", boxSizing: "border-box",
+                background: "#0b1424", border: `1px solid ${shareEmailErr ? "#f87171" : border}`,
+                borderRadius: 8, color: "#e2e8f0", fontSize: 13,
+                padding: "10px 14px", outline: "none", marginBottom: 6,
+              }}
+            />
+            {shareEmailErr && (
+              <p style={{ fontSize: 12, color: "#f87171", margin: "0 0 14px" }}>{shareEmailErr}</p>
+            )}
+            <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+              <button
+                onClick={() => setShowShareModal(false)}
+                style={{
+                  flex: 1, padding: "10px 0", background: "transparent",
+                  border: `1px solid ${border}`, borderRadius: 8,
+                  color: muted, fontSize: 13, fontWeight: 600, cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleShare}
+                style={{
+                  flex: 1, padding: "10px 0", background: "#0369a1",
+                  border: "none", borderRadius: 8,
+                  color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer",
+                }}
+              >
+                Share Code
               </button>
             </div>
           </div>
