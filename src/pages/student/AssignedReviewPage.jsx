@@ -1,64 +1,20 @@
-import { useMemo, useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import DashboardLayout from "../../components/layout/DashboardLayout";
 
-const reviewAssignments = {
-  1: {
-    id: 1,
-    title: "Peer Review - Lab 7",
-    course: "ICS 202 - SEC 03",
-    studentLabel: "Anonymous Submission",
-    dueText: "Due in 2 days",
-    submittedAt: "Feb 28",
-    files: ["solution.py", "README.md"],
-    fileContents: {
-      "solution.py": `# Linked List implementation
+const PEER_REVIEWS_KEY = "labtrack_peer_reviews";
 
-class ListNode:
-    def __init__(self, val=0):
-        self.val = val
-        self.next = None
+function readJson(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch (e) {
+    console.warn(`Failed to read ${key}`, e);
+    return fallback;
+  }
+}
 
-def reverse(head):
-    prev = None
-    curr = head
-
-    while curr:
-        nxt = curr.next
-        curr.next = prev
-        prev = curr
-        curr = nxt
-
-    return prev
-`,
-      "README.md": `# Lab 7 Notes
-
-This solution uses an iterative reverse approach.
-Time complexity: O(n)
-Space complexity: O(1)
-`,
-    },
-    testsPassed: "5/5 Tests pass",
-  },
-  2: {
-    id: 2,
-    title: "Peer Review - Lab 8",
-    course: "ICS 202 - SEC 03",
-    studentLabel: "Anonymous Submission",
-    dueText: "Completed",
-    submittedAt: "Mar 02",
-    files: ["solution.py"],
-    fileContents: {
-      "solution.py": `def is_palindrome(s):
-    s = s.lower()
-    return s == s[::-1]
-`,
-    },
-    testsPassed: "4/5 Tests pass",
-  },
-};
-
-function StarRating({ label, value, onChange }) {
+function starRatingWidget(label, value, onChange, readonly) {
   return (
     <div>
       <p className="text-white font-semibold mb-2">{label}</p>
@@ -67,10 +23,8 @@ function StarRating({ label, value, onChange }) {
           <button
             key={star}
             type="button"
-            onClick={() => onChange(star)}
-            className={`text-3xl transition ${
-              star <= value ? "text-yellow-400" : "text-slate-500"
-            }`}
+            onClick={() => { if (!readonly) onChange(star); }}
+            className={`text-3xl transition ${star <= value ? "text-yellow-400" : "text-slate-500"} ${readonly ? "cursor-default" : "hover:text-yellow-300"}`}
           >
             ★
           </button>
@@ -80,184 +34,344 @@ function StarRating({ label, value, onChange }) {
   );
 }
 
-function AssignedReviewPage() {
+function lineBackground(hasComment, isActive) {
+  if (hasComment) return "bg-yellow-500/10";
+  if (isActive)   return "bg-cyan-500/10";
+  return "hover:bg-white/5";
+}
+
+export default function AssignedReviewPage() {
   const { reviewId } = useParams();
   const navigate = useNavigate();
 
-  const review = useMemo(() => {
-    return reviewAssignments[reviewId] || reviewAssignments[1];
+  const [review, setReview]               = useState(null);
+  const [activeFile, setActiveFile]       = useState(null);
+  const [readability, setReadability]     = useState(0);
+  const [efficiency, setEfficiency]       = useState(0);
+  const [commentsRating, setCommentsRating] = useState(0);
+  const [strengths, setStrengths]         = useState("");
+  const [improvements, setImprovements]   = useState("");
+  const [overallComment, setOverallComment] = useState("");
+  const [submitted, setSubmitted]         = useState(false);
+  const [lineComments, setLineComments]   = useState({});
+  const [activeCommentLine, setActiveCommentLine] = useState(null);
+  const [commentDraft, setCommentDraft]   = useState("");
+
+  useEffect(() => {
+    const all = readJson(PEER_REVIEWS_KEY, []);
+    const found = all.find((r) => r.id === reviewId) || all[0] || null;
+    if (found) {
+      setReview(found);
+      setActiveFile(found.files?.[0] || null);
+      if (found.review) {
+        setReadability(found.review.readability);
+        setEfficiency(found.review.efficiency);
+        setCommentsRating(found.review.comments);
+        setStrengths(found.review.strengths);
+        setImprovements(found.review.improvements);
+        setOverallComment(found.review.overallComment);
+        setLineComments(found.review.lineComments || {});
+        setSubmitted(true);
+      }
+    }
   }, [reviewId]);
 
-  const [activeFile, setActiveFile] = useState(review.files[0]);
-  const [readability, setReadability] = useState(0);
-  const [efficiency, setEfficiency] = useState(0);
-  const [commentsRating, setCommentsRating] = useState(0);
-  const [strengths, setStrengths] = useState("");
-  const [improvements, setImprovements] = useState("");
-  const [overallComment, setOverallComment] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  if (!review) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64 text-slate-400">Loading review…</div>
+      </DashboardLayout>
+    );
+  }
 
-  const code = review.fileContents[activeFile] || "";
+  const isCompleted = review.status === "completed";
+  const code = review.fileContents?.[activeFile] || "";
+  // Annotated lines give each line a stable 1-based lineNum so we don't use
+  // the raw array index as the React key (satisfies S6479).
+  const annotatedLines = code.split("\n").map((text, i) => ({ text, lineNum: i + 1 }));
 
   const isFormValid =
     readability > 0 &&
     efficiency > 0 &&
     commentsRating > 0 &&
-    strengths.trim() &&
-    improvements.trim() &&
-    overallComment.trim();
+    strengths.trim().length >= 10 &&
+    improvements.trim().length >= 10 &&
+    overallComment.trim().length >= 10;
 
   const handleSubmit = () => {
-    if (!isFormValid) return;
+    if (!isFormValid || submitted) return;
+
+    const reviewData = {
+      readability,
+      efficiency,
+      comments: commentsRating,
+      strengths: strengths.trim(),
+      improvements: improvements.trim(),
+      overallComment: overallComment.trim(),
+      lineComments,
+      submittedAt: new Date().toISOString(),
+    };
+
+    try {
+      const all = readJson(PEER_REVIEWS_KEY, []);
+      const updated = all.map((r) => {
+        if (r.id !== review.id) return r;
+        return { ...r, status: "completed", review: reviewData };
+      });
+      localStorage.setItem(PEER_REVIEWS_KEY, JSON.stringify(updated));
+    } catch (e) {
+      console.warn("Could not save review", e);
+    }
 
     setSubmitted(true);
-
-    setTimeout(() => {
-      navigate("/peer-review");
-    }, 1500);
+    setTimeout(() => navigate("/peer-review"), 1500);
   };
+
+  const handleSaveComment = (lineIdx) => {
+    const text = commentDraft.trim();
+    if (text.length > 0) {
+      setLineComments((prev) => ({ ...prev, [lineIdx]: text }));
+    }
+    setActiveCommentLine(null);
+    setCommentDraft("");
+  };
+
+  const handleRemoveComment = (lineIdx) => {
+    setLineComments((prev) => {
+      const next = { ...prev };
+      delete next[lineIdx];
+      return next;
+    });
+  };
+
+  const handleLineClick = (lineIdx) => {
+    if (isCompleted) return;
+    if (activeCommentLine === lineIdx) {
+      setActiveCommentLine(null);
+      setCommentDraft("");
+    } else {
+      setActiveCommentLine(lineIdx);
+      setCommentDraft(lineComments[lineIdx] || "");
+    }
+  };
+
+  const handleLineKeyDown = (e, lineIdx) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      handleLineClick(lineIdx);
+    }
+  };
+
+  const relDue = () => {
+    const ms = new Date(review.dueDate).getTime() - Date.now();
+    if (ms < 0) return "Overdue";
+    const h = Math.floor(ms / 3600000);
+    if (h < 24) return `Due in ${h}h`;
+    return `Due in ${Math.floor(h / 24)}d`;
+  };
+
+  const commentCount = Object.keys(lineComments).length;
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div className="border border-cyan-400 rounded-2xl bg-[#111a2e] px-6 py-5 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-white">{review.title}</h1>
-            <p className="text-slate-400 mt-2">
-              {review.course} • {review.studentLabel}
-            </p>
+            <h1 className="text-3xl font-bold text-white">{review.labTitle} — Peer Review</h1>
+            <p className="text-slate-400 mt-2">Anonymous Submission · {review.testsPassed} tests passed</p>
           </div>
-          <div className="bg-yellow-500 text-black font-bold px-5 py-2 rounded-full text-sm">
-            {review.dueText}
+          <div className={`font-bold px-5 py-2 rounded-full text-sm ${isCompleted ? "bg-green-500/20 text-green-400" : "bg-yellow-500 text-black"}`}>
+            {isCompleted ? "Completed" : relDue()}
           </div>
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-          {/* Left */}
+          {/* Left — file list */}
           <div className="xl:col-span-2 bg-[#111a2e] border border-white/5 rounded-2xl p-5">
-            <p className="text-xs font-bold tracking-widest text-slate-500 uppercase mb-4">
-              Review Details
-            </p>
-
-            <div className="space-y-3 text-sm">
-              <div>
-                <p className="text-slate-500">Submission</p>
-                <p className="text-white font-medium">{review.studentLabel}</p>
-              </div>
-
+            <p className="text-xs font-bold tracking-widest text-slate-500 uppercase mb-4">Files</p>
+            <div className="space-y-2">
+              {review.files?.map((file) => (
+                <button
+                  key={file}
+                  onClick={() => setActiveFile(file)}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition ${
+                    activeFile === file
+                      ? "bg-[#1b2942] text-cyan-400 border border-cyan-500/30"
+                      : "bg-[#0f172a] text-slate-300 border border-transparent"
+                  }`}
+                >
+                  {file}
+                </button>
+              ))}
+            </div>
+            <div className="mt-6 space-y-3 text-sm">
               <div>
                 <p className="text-slate-500">Submitted</p>
-                <p className="text-white font-medium">{review.submittedAt}</p>
+                <p className="text-white font-medium">
+                  {new Date(review.sharedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                </p>
               </div>
-
               <div>
                 <p className="text-slate-500">Tests</p>
                 <p className="text-green-400 font-semibold">{review.testsPassed}</p>
               </div>
-
-              <div>
-                <p className="text-slate-500 mb-2">Files</p>
-                <div className="space-y-2">
-                  {review.files.map((file) => (
-                    <button
-                      key={file}
-                      onClick={() => setActiveFile(file)}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-sm transition ${
-                        activeFile === file
-                          ? "bg-[#1b2942] text-cyan-400 border border-cyan-500/30"
-                          : "bg-[#0f172a] text-slate-300 border border-transparent"
-                      }`}
-                    >
-                      {file}
-                    </button>
-                  ))}
+              {commentCount > 0 && (
+                <div>
+                  <p className="text-slate-500">Line Comments</p>
+                  <p className="text-yellow-400 font-semibold">{commentCount}</p>
                 </div>
-              </div>
+              )}
             </div>
           </div>
 
-          {/* Center */}
+          {/* Center — interactive code */}
           <div className="xl:col-span-6 bg-[#111a2e] border border-white/5 rounded-2xl overflow-hidden">
             <div className="border-b border-white/5 px-5 py-4 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-white">Submission to Review</h2>
-              <span className="text-sm text-slate-400">{activeFile}</span>
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-bold text-white">Submission to Review</h2>
+                {commentCount > 0 && (
+                  <span className="bg-yellow-500/20 text-yellow-400 text-xs font-bold px-2 py-1 rounded-full">
+                    {commentCount} comment{commentCount === 1 ? "" : "s"}
+                  </span>
+                )}
+              </div>
+              <span className="text-sm text-slate-400">
+                {isCompleted ? activeFile : `${activeFile} · Click a line to comment`}
+              </span>
             </div>
-
             <div className="p-5">
-              <pre className="bg-[#09111f] rounded-xl p-5 overflow-x-auto text-sm text-slate-200 leading-7 font-mono border border-cyan-500/10 min-h-[550px] whitespace-pre-wrap">
-                {code}
-              </pre>
+              <div className="bg-[#09111f] rounded-xl border border-cyan-500/10 min-h-[550px] overflow-x-auto font-mono text-sm">
+                {annotatedLines.map(({ text, lineNum }) => {
+                  const lineIdx    = lineNum - 1;
+                  const hasComment = Boolean(lineComments[lineIdx]);
+                  const isActive   = activeCommentLine === lineIdx;
+                  const bg         = lineBackground(hasComment, isActive);
+
+                  return (
+                    <div key={lineNum}>
+                      <button
+                        type="button"
+                        tabIndex={isCompleted ? -1 : 0}
+                        onClick={() => handleLineClick(lineIdx)}
+                        onKeyDown={(e) => handleLineKeyDown(e, lineIdx)}
+                        className={`flex group leading-7 w-full text-left ${isCompleted ? "" : "cursor-pointer"} ${bg}`}
+                      >
+                        <span className="select-none w-10 shrink-0 text-right pr-3 text-slate-600 border-r border-white/5 py-0.5">
+                          {lineNum}
+                        </span>
+                        <span className="flex-1 px-4 py-0.5 text-slate-200 whitespace-pre">
+                          {text || " "}
+                        </span>
+                        {hasComment && (
+                          <span className="shrink-0 pr-3 py-0.5 text-yellow-400 text-xs self-center">💬</span>
+                        )}
+                        {hasComment || isCompleted ? null : (
+                          <span className="shrink-0 pr-3 py-0.5 text-slate-700 text-xs self-center opacity-0 group-hover:opacity-100 transition">
+                            + comment
+                          </span>
+                        )}
+                      </button>
+
+                      {/* Existing comment — shown when not editing */}
+                      {hasComment && !isActive && (
+                        <div className="bg-yellow-500/10 border-l-2 border-yellow-400 mx-4 mb-1 px-3 py-2 rounded-r text-xs text-yellow-200 flex items-start justify-between gap-2">
+                          <span>{lineComments[lineIdx]}</span>
+                          {isCompleted ? null : (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); handleRemoveComment(lineIdx); }}
+                              className="text-yellow-500 hover:text-red-400 shrink-0"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Inline comment input */}
+                      {isActive && (
+                        <div className="bg-[#0f172a] border-l-2 border-cyan-400 mx-4 mb-1 p-3 rounded-r">
+                          <textarea
+                            autoFocus
+                            value={commentDraft}
+                            onChange={(e) => setCommentDraft(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && !e.shiftKey) {
+                                e.preventDefault();
+                                handleSaveComment(lineIdx);
+                              } else if (e.key === "Escape") {
+                                setActiveCommentLine(null);
+                                setCommentDraft("");
+                              }
+                            }}
+                            placeholder="Add a comment… (Enter to save, Esc to cancel)"
+                            className="w-full bg-[#09111f] border border-cyan-500/30 rounded px-3 py-2 text-xs text-white outline-none resize-none min-h-[60px]"
+                          />
+                          <div className="flex gap-2 mt-2 justify-end">
+                            <button
+                              type="button"
+                              onClick={() => { setActiveCommentLine(null); setCommentDraft(""); }}
+                              className="text-xs text-slate-500 hover:text-white px-2 py-1"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveComment(lineIdx)}
+                              className="text-xs bg-cyan-500 hover:bg-cyan-600 text-white px-3 py-1 rounded font-semibold"
+                            >
+                              Save
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
-          {/* Right */}
+          {/* Right — review form */}
           <div className="xl:col-span-4 bg-[#111a2e] border border-white/5 rounded-2xl p-5">
-            <h2 className="text-2xl font-bold text-white mb-6">Your Review</h2>
-
+            <h2 className="text-2xl font-bold text-white mb-6">
+              {isCompleted ? "Your Review" : "Write Review"}
+            </h2>
             <div className="space-y-6">
-              <StarRating
-                label="Code Readability"
-                value={readability}
-                onChange={setReadability}
-              />
+              {starRatingWidget("Code Readability",    readability,    setReadability,    isCompleted)}
+              {starRatingWidget("Algorithm Efficiency", efficiency,     setEfficiency,     isCompleted)}
+              {starRatingWidget("Code Comments",        commentsRating, setCommentsRating, isCompleted)}
 
-              <StarRating
-                label="Algorithm Efficiency"
-                value={efficiency}
-                onChange={setEfficiency}
-              />
+              {[
+                { label: "Strengths (min 10 chars)",            val: strengths,      set: setStrengths,      ph: "What did the student do well?" },
+                { label: "Areas of Improvement (min 10 chars)", val: improvements,   set: setImprovements,   ph: "What can be improved?" },
+                { label: "Overall Comment (min 10 chars)",       val: overallComment, set: setOverallComment, ph: "Your final feedback…" },
+              ].map(({ label, val, set, ph }) => (
+                <div key={label}>
+                  <label className="block text-white font-semibold mb-2">{label}</label>
+                  <textarea
+                    value={val}
+                    onChange={(e) => { if (!isCompleted) set(e.target.value); }}
+                    readOnly={isCompleted}
+                    className="w-full min-h-[80px] bg-[#1a2438] border border-white/5 rounded-xl px-4 py-3 text-white outline-none resize-none"
+                    placeholder={isCompleted ? "" : ph}
+                  />
+                </div>
+              ))}
 
-              <StarRating
-                label="Code Comments"
-                value={commentsRating}
-                onChange={setCommentsRating}
-              />
-
-              <div>
-                <label className="block text-white font-semibold mb-2">Strengths</label>
-                <textarea
-                  value={strengths}
-                  onChange={(e) => setStrengths(e.target.value)}
-                  className="w-full min-h-[90px] bg-[#1a2438] border border-white/5 rounded-xl px-4 py-3 text-white outline-none"
-                  placeholder="Write what the student did well..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-white font-semibold mb-2">
-                  Areas of Improvement
-                </label>
-                <textarea
-                  value={improvements}
-                  onChange={(e) => setImprovements(e.target.value)}
-                  className="w-full min-h-[90px] bg-[#1a2438] border border-white/5 rounded-xl px-4 py-3 text-white outline-none"
-                  placeholder="Write what can be improved..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-white font-semibold mb-2">
-                  Overall Comment
-                </label>
-                <textarea
-                  value={overallComment}
-                  onChange={(e) => setOverallComment(e.target.value)}
-                  className="w-full min-h-[100px] bg-[#1a2438] border border-white/5 rounded-xl px-4 py-3 text-white outline-none"
-                  placeholder="Give your final feedback..."
-                />
-              </div>
-
-              <button
-                onClick={handleSubmit}
-                disabled={!isFormValid || submitted}
-                className={`w-full py-3 rounded-xl font-bold text-lg transition ${
-                  !isFormValid || submitted
-                    ? "bg-slate-700 text-slate-400 cursor-not-allowed"
-                    : "bg-blue-500 hover:bg-blue-600 text-white"
-                }`}
-              >
-                {submitted ? "Review Submitted" : "Submit Review"}
-              </button>
+              {isCompleted ? null : (
+                <button
+                  onClick={handleSubmit}
+                  disabled={!isFormValid || submitted}
+                  className={`w-full py-3 rounded-xl font-bold text-lg transition ${
+                    !isFormValid || submitted
+                      ? "bg-slate-700 text-slate-400 cursor-not-allowed"
+                      : "bg-blue-500 hover:bg-blue-600 text-white"
+                  }`}
+                >
+                  {submitted ? "Review Submitted ✓" : "Submit Review"}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -265,5 +379,3 @@ function AssignedReviewPage() {
     </DashboardLayout>
   );
 }
-
-export default AssignedReviewPage;
