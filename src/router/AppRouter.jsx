@@ -14,6 +14,7 @@ import SystemMonitorPage from "../pages/admin/SystemMonitorPage.jsx";
 import AnalyticsDashboardPage from "../pages/admin/AnalyticsDashboardPage.jsx";
 import SecurityAccessPage from "../pages/admin/SecurityAccessPage.jsx";
 import BackupRecoveryPage from "../pages/admin/BackupRecoveryPage.jsx";
+import ReferenceSolutionsPage from "../pages/student/ReferenceSolutionsPage.jsx";
 import LabsManagementPage from "../pages/instructor/LabsManagementPage.jsx";
 import CreateLabPage from "../pages/instructor/CreateLabPage.jsx";
 import SubmissionsPage from "../pages/instructor/SubmissionsPage.jsx";
@@ -32,6 +33,7 @@ function AppRouter() {
         <Route path="/history" element={<HistoryPage />} />
         <Route path="/history/:labId" element={<HistoryLabPage />} />
         <Route path="/grades" element={<GradesPage />} />
+        <Route path="/solutions" element={<ReferenceSolutionsPage />} />
         <Route path="/admin/users" element={<UserManagementPage />} />
         <Route path="/admin/courses" element={<CourseManagementPage />} />
         <Route path="/admin/departments" element={<DepartmentSettingsPage />} />
