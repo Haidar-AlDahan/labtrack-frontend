@@ -392,6 +392,7 @@ export default function LabWorkspacePage() {
   const [shareEmail, setShareEmail] = useState("");
   const [shareEmailErr, setShareEmailErr] = useState("");
   const [shareToast, setShareToast] = useState("");
+  const [shareLinkCopied, setShareLinkCopied] = useState(false);
   const [descCollapsed, setDescCollapsed] = useState(false);
   const [isAddingPage, setIsAddingPage] = useState(false);
   const [newPageName, setNewPageName] = useState("");
@@ -1812,6 +1813,44 @@ export default function LabWorkspacePage() {
                 }}
               >
                 Share Code
+              </button>
+            </div>
+
+            {/* OR divider */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "20px 0 16px" }}>
+              <div style={{ flex: 1, height: 1, background: border }} />
+              <span style={{ fontSize: 11, color: muted, fontWeight: 600 }}>OR</span>
+              <div style={{ flex: 1, height: 1, background: border }} />
+            </div>
+
+            {/* Shareable link */}
+            <p style={{ fontSize: 13, color: muted, marginBottom: 10 }}>
+              Generate a shareable review link anyone with the URL can use:
+            </p>
+            <div style={{ display: "flex", gap: 8 }}>
+              <div style={{
+                flex: 1, background: "#0b1424", border: `1px solid ${border}`,
+                borderRadius: 8, padding: "10px 14px", fontSize: 12,
+                color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }}>
+                {`${globalThis.location.origin}/peer-reviews/link/${labData.id}-${Date.now().toString(36)}`}
+              </div>
+              <button
+                onClick={() => {
+                  const link = `${globalThis.location.origin}/peer-reviews/link/${labData.id}-${Date.now().toString(36)}`;
+                  navigator.clipboard.writeText(link).catch(() => {});
+                  setShareLinkCopied(true);
+                  setTimeout(() => setShareLinkCopied(false), 2000);
+                }}
+                style={{
+                  padding: "10px 16px", background: shareLinkCopied ? "#16a34a" : "#1a2540",
+                  border: `1px solid ${shareLinkCopied ? "#16a34a" : border}`,
+                  borderRadius: 8, color: shareLinkCopied ? "#fff" : "#e2e8f0",
+                  fontSize: 12, fontWeight: 600, cursor: "pointer",
+                  transition: "all 0.2s", whiteSpace: "nowrap",
+                }}
+              >
+                {shareLinkCopied ? "Copied!" : "Copy Link"}
               </button>
             </div>
           </div>
