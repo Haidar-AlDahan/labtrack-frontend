@@ -31,7 +31,7 @@ export default function LabsPage() {
         </h2>
 
         <p style={{ margin: "0 0 18px", color: "#94a3b8", fontSize: 13 }}>
-          Choose your lab and click "Open" to start working on it.
+          Choose and open your lab and to start working on it.
         </p>
 
         <div style={{ display: "grid", gap: 12 }}>

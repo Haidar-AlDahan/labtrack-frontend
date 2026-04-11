@@ -1,26 +1,29 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
-export default function SideBar({ footer = null, children = null }) {
+export default function InstructorSideBar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [hoveredNav, setHoveredNav] = useState(null);
 
   const navItems = [
-    { label: "Dashboard", icon: "🧭", path: "/dashboard" },
-    { label: "My Labs", icon: "🧪", path: "/labs", matchPaths: ["/labs"] },
-    { label: "Peer Review", icon: "💬", path: "/peer-review" },
-    { label: "Grades", icon: "📊", path: "/grades" },
-    { label: "History", icon: "🕐", path: "/history" },
-    { label: "Solutions", icon: "📖", path: "/solutions" },
+    {
+      label: "Lab Management",
+      icon: "🧪",
+      path: "/instructor/labs",
+      matchPaths: ["/instructor/labs"],
+    },
+    { label: "Students", icon: "👥", path: "/instructor/students", disabled: true },
+    { label: "Analytics", icon: "📊", path: "/instructor/analytics" },
+    { label: "Settings", icon: "⚙️", path: "/instructor/settings", disabled: true },
   ];
 
-  const bg1 = "#080f1e";
   const border = "#1a2540";
   const accent = "#22d3ee";
   const muted = "#8898b3";
   const dimmed = "#4a5568";
-  const sidebar = (
+
+  return (
     <aside
       style={{
         width: 264,
@@ -51,25 +54,12 @@ export default function SideBar({ footer = null, children = null }) {
             textTransform: "uppercase",
           }}
         >
-          Navigation
+          Instructor
         </span>
         <div>
-          <div
-            style={{
-              fontSize: 18,
-              fontWeight: 700,
-              color: "#e2e8f0",
-            }}
-          >
+          <div style={{ fontSize: 18, fontWeight: 700, color: "#e2e8f0" }}>
             LabTrack
           </div>
-          <div
-            style={{
-              marginTop: 4,
-              fontSize: 12,
-              color: muted,
-            }}
-          ></div>
         </div>
       </div>
 
@@ -79,20 +69,21 @@ export default function SideBar({ footer = null, children = null }) {
       >
         {navItems.map((item) => {
           const matchedPaths = item.matchPaths ?? [item.path];
-          const isActive = matchedPaths.some(
+          const isActive = !item.disabled && matchedPaths.some(
             (path) =>
               location.pathname === path ||
               location.pathname.startsWith(`${path}/`),
           );
-
           const isHighlighted = isActive || hoveredNav === item.label;
+          const labelColor = item.disabled ? dimmed : isHighlighted ? "#e2e8f0" : muted;
 
           return (
             <button
               key={item.label}
-              onClick={() => navigate(item.path)}
-              onMouseEnter={() => setHoveredNav(item.label)}
+              onClick={() => !item.disabled && navigate(item.path)}
+              onMouseEnter={() => !item.disabled && setHoveredNav(item.label)}
               onMouseLeave={() => setHoveredNav(null)}
+              title={item.disabled ? "Coming soon" : undefined}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -103,12 +94,13 @@ export default function SideBar({ footer = null, children = null }) {
                 background: isHighlighted ? "#10213f" : "transparent",
                 border: `1px solid ${isHighlighted ? "#1e3a5f" : "transparent"}`,
                 borderRadius: 14,
-                color: isHighlighted ? "#e2e8f0" : muted,
+                color: labelColor,
                 fontSize: 14,
                 fontWeight: 600,
-                cursor: "pointer",
+                cursor: item.disabled ? "not-allowed" : "pointer",
                 textAlign: "left",
                 transition: "all 0.2s ease",
+                opacity: item.disabled ? 0.5 : 1,
               }}
             >
               <span
@@ -129,23 +121,15 @@ export default function SideBar({ footer = null, children = null }) {
                 {item.icon}
               </span>
               <span style={{ flex: 1 }}>{item.label}</span>
+              {item.disabled && (
+                <span style={{ fontSize: 9, color: dimmed, letterSpacing: "0.05em" }}>
+                  SOON
+                </span>
+              )}
             </button>
           );
         })}
       </nav>
-
-      {footer}
     </aside>
   );
-
-  if (children) {
-    return (
-      <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
-        {sidebar}
-        <div style={{ display: "flex", flex: 1, minWidth: 0 }}>{children}</div>
-      </div>
-    );
-  }
-
-  return sidebar;
 }
