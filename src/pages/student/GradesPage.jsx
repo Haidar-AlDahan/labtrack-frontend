@@ -56,6 +56,7 @@ export default function GradesPage() {
   const [courses, setCourses]           = useState(SEED_COURSES);
   const [selectedCourse, setSelectedCourse] = useState(SEED_COURSES[0]);
   const [rows, setRows]                 = useState(SEED_ROWS);
+  const [detailItem, setDetailItem]     = useState(null);
 
   useEffect(() => {
     const user = getCurrentUser() || {};
@@ -268,7 +269,19 @@ export default function GradesPage() {
                       <td className={`px-4 py-4 text-sm font-bold ${getGradeColor(item.grade)}`}>{item.grade}</td>
                       <td className={`px-4 py-4 text-sm font-semibold ${getStatusClass(item.status)}`}>{item.status}</td>
                       <td className="px-4 py-4 text-sm text-gray-300">{item.submittedAt}</td>
-                      <td className="px-4 py-4 text-sm text-gray-400">"{item.feedback}"</td>
+                      <td className="px-4 py-4 text-sm text-gray-400">
+                        {item.status === "Graded" ? (
+                          <button
+                            type="button"
+                            onClick={() => setDetailItem(item)}
+                            className="text-cyan-400 hover:text-cyan-300 underline text-sm"
+                          >
+                            View Feedback
+                          </button>
+                        ) : (
+                          <span className="text-gray-600">—</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -281,6 +294,59 @@ export default function GradesPage() {
           </div>
         </div>
       </div>
+
+      {/* Feedback Detail Modal */}
+      {detailItem && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="bg-[#0b1424] border border-cyan-500/30 rounded-2xl p-8 max-w-lg w-full mx-4 shadow-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-white">{detailItem.lab} — Instructor Feedback</h2>
+              <button
+                type="button"
+                onClick={() => setDetailItem(null)}
+                className="text-slate-400 hover:text-white text-xl font-bold"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="space-y-4 text-sm">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-[#0f172a] rounded-xl p-4">
+                  <p className="text-slate-500 mb-1">Score</p>
+                  <p className={`text-2xl font-bold ${getScoreClass(detailItem.score)}`}>
+                    {getScoreDisplay(detailItem.score)}
+                  </p>
+                </div>
+                <div className="bg-[#0f172a] rounded-xl p-4">
+                  <p className="text-slate-500 mb-1">Grade</p>
+                  <p className={`text-2xl font-bold ${getGradeColor(detailItem.grade)}`}>
+                    {detailItem.grade}
+                  </p>
+                </div>
+              </div>
+              <div className="bg-[#0f172a] rounded-xl p-4">
+                <p className="text-slate-500 mb-1">Tests Passed</p>
+                <p className="text-white font-semibold">{detailItem.testsPassed}/{detailItem.testsTotal}</p>
+              </div>
+              <div className="bg-[#0f172a] rounded-xl p-4">
+                <p className="text-slate-500 mb-2">Instructor Comment</p>
+                <p className="text-white leading-relaxed">"{detailItem.feedback}"</p>
+              </div>
+              <div className="bg-[#0f172a] rounded-xl p-4">
+                <p className="text-slate-500 mb-1">Submitted</p>
+                <p className="text-white">{detailItem.submittedAt}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setDetailItem(null)}
+              className="mt-6 w-full py-2 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white font-semibold transition"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }
