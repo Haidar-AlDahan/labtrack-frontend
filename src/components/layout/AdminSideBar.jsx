@@ -8,7 +8,7 @@ const NAV_ITEMS = [
   { label: "System Settings", icon: "⚙️", path: "/admin/settings" },
   { label: "System Monitor", icon: "📊", path: "/admin/monitor" },
   { label: "Analytics", icon: "📈", path: "/admin/analytics" },
-  { label: "Security & Access", icon: "🔒", path: "/admin/security", disabled: true },
+  { label: "Security & Access", icon: "🔒", path: "/admin/security" },
   { label: "Backup & Recovery", icon: "💾", path: "/admin/backup", disabled: true },
 ];
 
