@@ -12,6 +12,7 @@ export default function SideBar({ footer = null, children = null }) {
     { label: "Peer Review", icon: "💬", path: "/peer-review" },
     { label: "Grades", icon: "📊", path: "/grades" },
     { label: "History", icon: "🕐", path: "/history" },
+    { label: "Solutions", icon: "📖", path: "/solutions" },
   ];
 
   const bg1 = "#080f1e";
