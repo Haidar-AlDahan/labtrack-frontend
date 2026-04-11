@@ -348,6 +348,11 @@ export default function LabWorkspacePage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { labId } = useParams();
+  const numericLabId = Number(labId);
+  const hasValidLab = Object.prototype.hasOwnProperty.call(
+    LAB_DATA_BY_ID,
+    numericLabId,
+  );
   const selectedLab = LAB_DATA_BY_ID[Number(labId)] ?? LAB_DATA;
   const restoredSnapshot = location.state?.restoredSnapshot;
   const currentLabId = String(selectedLab.id);
@@ -774,6 +779,10 @@ export default function LabWorkspacePage() {
   const muted = "#8898b3";
   const dimmed = "#4a5568";
   const panelHeaderHeight = 46;
+
+  if (!hasValidLab) {
+    return null;
+  }
 
   return (
     <div
