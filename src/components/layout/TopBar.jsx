@@ -1,14 +1,15 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { clearCurrentUser, getCurrentUser } from "../../utils/authStorage.js";
 
 function TopBar({ title = ""}) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
-  const currentUser = JSON.parse(localStorage.getItem("currentUser")) || {};
+  const currentUser = getCurrentUser() || {};
 
   const handleLogout = () => {
-    localStorage.removeItem("currentUser");
+    clearCurrentUser();
     navigate("/");
   };
 

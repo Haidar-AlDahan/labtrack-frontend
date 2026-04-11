@@ -1,8 +1,9 @@
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import { useNavigate } from "react-router-dom";
+import { getCurrentUser } from "../../utils/authStorage.js";
 
 function DashboardPage() {
-  const currentUser = JSON.parse(localStorage.getItem("currentUser")) || {};
+  const currentUser = getCurrentUser() || {};
   const navigate = useNavigate();
   const stats = [
     { value: "8", label: "Labs Completed", color: "text-cyan-400" },
