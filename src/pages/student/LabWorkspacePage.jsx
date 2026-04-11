@@ -750,6 +750,20 @@ export default function LabWorkspacePage() {
   const handleConfirmSubmit = () => {
     setShowSubmit(false);
     setSubmitted(true);
+    // Persist submission status so DashboardPage / LabsPage can read it
+    try {
+      const user = JSON.parse(localStorage.getItem("currentUser") || "{}");
+      const key = "labtrack_student_progress";
+      const all = JSON.parse(localStorage.getItem(key) || "{}");
+      const uid = user.id || user.email || "guest";
+      all[uid] = all[uid] || {};
+      all[uid][selectedLab.id] = {
+        status: "submitted",
+        submittedAt: new Date().toISOString(),
+        score: null,
+      };
+      localStorage.setItem(key, JSON.stringify(all));
+    } catch (e) { console.warn("Could not persist submission status", e); }
     setTimeout(() => navigate("/dashboard"), 2200);
   };
 
