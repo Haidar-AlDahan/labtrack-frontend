@@ -14,7 +14,7 @@ function readJson(key, fallback) {
   }
 }
 
-function StarRating({ label, value, onChange, readonly }) {
+function starRatingWidget(label, value, onChange, readonly) {
   return (
     <div>
       <p className="text-white font-semibold mb-2">{label}</p>
@@ -34,6 +34,12 @@ function StarRating({ label, value, onChange, readonly }) {
   );
 }
 
+function lineBackground(hasComment, isActive) {
+  if (hasComment) return "bg-yellow-500/10";
+  if (isActive)   return "bg-cyan-500/10";
+  return "hover:bg-white/5";
+}
+
 export default function AssignedReviewPage() {
   const { reviewId } = useParams();
   const navigate = useNavigate();
@@ -47,6 +53,9 @@ export default function AssignedReviewPage() {
   const [improvements, setImprovements]   = useState("");
   const [overallComment, setOverallComment] = useState("");
   const [submitted, setSubmitted]         = useState(false);
+  const [lineComments, setLineComments]   = useState({});
+  const [activeCommentLine, setActiveCommentLine] = useState(null);
+  const [commentDraft, setCommentDraft]   = useState("");
 
   useEffect(() => {
     const all = readJson(PEER_REVIEWS_KEY, []);
@@ -61,6 +70,7 @@ export default function AssignedReviewPage() {
         setStrengths(found.review.strengths);
         setImprovements(found.review.improvements);
         setOverallComment(found.review.overallComment);
+        setLineComments(found.review.lineComments || {});
         setSubmitted(true);
       }
     }
@@ -76,6 +86,9 @@ export default function AssignedReviewPage() {
 
   const isCompleted = review.status === "completed";
   const code = review.fileContents?.[activeFile] || "";
+  // Annotated lines give each line a stable 1-based lineNum so we don't use
+  // the raw array index as the React key (satisfies S6479).
+  const annotatedLines = code.split("\n").map((text, i) => ({ text, lineNum: i + 1 }));
 
   const isFormValid =
     readability > 0 &&
@@ -95,6 +108,7 @@ export default function AssignedReviewPage() {
       strengths: strengths.trim(),
       improvements: improvements.trim(),
       overallComment: overallComment.trim(),
+      lineComments,
       submittedAt: new Date().toISOString(),
     };
 
@@ -113,6 +127,41 @@ export default function AssignedReviewPage() {
     setTimeout(() => navigate("/peer-review"), 1500);
   };
 
+  const handleSaveComment = (lineIdx) => {
+    const text = commentDraft.trim();
+    if (text.length > 0) {
+      setLineComments((prev) => ({ ...prev, [lineIdx]: text }));
+    }
+    setActiveCommentLine(null);
+    setCommentDraft("");
+  };
+
+  const handleRemoveComment = (lineIdx) => {
+    setLineComments((prev) => {
+      const next = { ...prev };
+      delete next[lineIdx];
+      return next;
+    });
+  };
+
+  const handleLineClick = (lineIdx) => {
+    if (isCompleted) return;
+    if (activeCommentLine === lineIdx) {
+      setActiveCommentLine(null);
+      setCommentDraft("");
+    } else {
+      setActiveCommentLine(lineIdx);
+      setCommentDraft(lineComments[lineIdx] || "");
+    }
+  };
+
+  const handleLineKeyDown = (e, lineIdx) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      handleLineClick(lineIdx);
+    }
+  };
+
   const relDue = () => {
     const ms = new Date(review.dueDate).getTime() - Date.now();
     if (ms < 0) return "Overdue";
@@ -120,6 +169,8 @@ export default function AssignedReviewPage() {
     if (h < 24) return `Due in ${h}h`;
     return `Due in ${Math.floor(h / 24)}d`;
   };
+
+  const commentCount = Object.keys(lineComments).length;
 
   return (
     <DashboardLayout>
@@ -164,19 +215,120 @@ export default function AssignedReviewPage() {
                 <p className="text-slate-500">Tests</p>
                 <p className="text-green-400 font-semibold">{review.testsPassed}</p>
               </div>
+              {commentCount > 0 && (
+                <div>
+                  <p className="text-slate-500">Line Comments</p>
+                  <p className="text-yellow-400 font-semibold">{commentCount}</p>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Center — code */}
+          {/* Center — interactive code */}
           <div className="xl:col-span-6 bg-[#111a2e] border border-white/5 rounded-2xl overflow-hidden">
             <div className="border-b border-white/5 px-5 py-4 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-white">Submission to Review</h2>
-              <span className="text-sm text-slate-400">{activeFile}</span>
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-bold text-white">Submission to Review</h2>
+                {commentCount > 0 && (
+                  <span className="bg-yellow-500/20 text-yellow-400 text-xs font-bold px-2 py-1 rounded-full">
+                    {commentCount} comment{commentCount === 1 ? "" : "s"}
+                  </span>
+                )}
+              </div>
+              <span className="text-sm text-slate-400">
+                {isCompleted ? activeFile : `${activeFile} · Click a line to comment`}
+              </span>
             </div>
             <div className="p-5">
-              <pre className="bg-[#09111f] rounded-xl p-5 overflow-x-auto text-sm text-slate-200 leading-7 font-mono border border-cyan-500/10 min-h-[550px] whitespace-pre-wrap">
-                {code}
-              </pre>
+              <div className="bg-[#09111f] rounded-xl border border-cyan-500/10 min-h-[550px] overflow-x-auto font-mono text-sm">
+                {annotatedLines.map(({ text, lineNum }) => {
+                  const lineIdx    = lineNum - 1;
+                  const hasComment = Boolean(lineComments[lineIdx]);
+                  const isActive   = activeCommentLine === lineIdx;
+                  const bg         = lineBackground(hasComment, isActive);
+
+                  return (
+                    <div key={lineNum}>
+                      <button
+                        type="button"
+                        tabIndex={isCompleted ? -1 : 0}
+                        onClick={() => handleLineClick(lineIdx)}
+                        onKeyDown={(e) => handleLineKeyDown(e, lineIdx)}
+                        className={`flex group leading-7 w-full text-left ${isCompleted ? "" : "cursor-pointer"} ${bg}`}
+                      >
+                        <span className="select-none w-10 shrink-0 text-right pr-3 text-slate-600 border-r border-white/5 py-0.5">
+                          {lineNum}
+                        </span>
+                        <span className="flex-1 px-4 py-0.5 text-slate-200 whitespace-pre">
+                          {text || " "}
+                        </span>
+                        {hasComment && (
+                          <span className="shrink-0 pr-3 py-0.5 text-yellow-400 text-xs self-center">💬</span>
+                        )}
+                        {hasComment || isCompleted ? null : (
+                          <span className="shrink-0 pr-3 py-0.5 text-slate-700 text-xs self-center opacity-0 group-hover:opacity-100 transition">
+                            + comment
+                          </span>
+                        )}
+                      </button>
+
+                      {/* Existing comment — shown when not editing */}
+                      {hasComment && !isActive && (
+                        <div className="bg-yellow-500/10 border-l-2 border-yellow-400 mx-4 mb-1 px-3 py-2 rounded-r text-xs text-yellow-200 flex items-start justify-between gap-2">
+                          <span>{lineComments[lineIdx]}</span>
+                          {isCompleted ? null : (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); handleRemoveComment(lineIdx); }}
+                              className="text-yellow-500 hover:text-red-400 shrink-0"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Inline comment input */}
+                      {isActive && (
+                        <div className="bg-[#0f172a] border-l-2 border-cyan-400 mx-4 mb-1 p-3 rounded-r">
+                          <textarea
+                            autoFocus
+                            value={commentDraft}
+                            onChange={(e) => setCommentDraft(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && !e.shiftKey) {
+                                e.preventDefault();
+                                handleSaveComment(lineIdx);
+                              } else if (e.key === "Escape") {
+                                setActiveCommentLine(null);
+                                setCommentDraft("");
+                              }
+                            }}
+                            placeholder="Add a comment… (Enter to save, Esc to cancel)"
+                            className="w-full bg-[#09111f] border border-cyan-500/30 rounded px-3 py-2 text-xs text-white outline-none resize-none min-h-[60px]"
+                          />
+                          <div className="flex gap-2 mt-2 justify-end">
+                            <button
+                              type="button"
+                              onClick={() => { setActiveCommentLine(null); setCommentDraft(""); }}
+                              className="text-xs text-slate-500 hover:text-white px-2 py-1"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveComment(lineIdx)}
+                              className="text-xs bg-cyan-500 hover:bg-cyan-600 text-white px-3 py-1 rounded font-semibold"
+                            >
+                              Save
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
@@ -186,9 +338,9 @@ export default function AssignedReviewPage() {
               {isCompleted ? "Your Review" : "Write Review"}
             </h2>
             <div className="space-y-6">
-              {StarRating({ label: "Code Readability",    value: readability,    onChange: setReadability,    readonly: isCompleted })}
-              {StarRating({ label: "Algorithm Efficiency", value: efficiency,  onChange: setEfficiency,     readonly: isCompleted })}
-              {StarRating({ label: "Code Comments",        value: commentsRating, onChange: setCommentsRating, readonly: isCompleted })}
+              {starRatingWidget("Code Readability",    readability,    setReadability,    isCompleted)}
+              {starRatingWidget("Algorithm Efficiency", efficiency,     setEfficiency,     isCompleted)}
+              {starRatingWidget("Code Comments",        commentsRating, setCommentsRating, isCompleted)}
 
               {[
                 { label: "Strengths (min 10 chars)",            val: strengths,      set: setStrengths,      ph: "What did the student do well?" },
@@ -207,7 +359,7 @@ export default function AssignedReviewPage() {
                 </div>
               ))}
 
-              {!isCompleted && (
+              {isCompleted ? null : (
                 <button
                   onClick={handleSubmit}
                   disabled={!isFormValid || submitted}
