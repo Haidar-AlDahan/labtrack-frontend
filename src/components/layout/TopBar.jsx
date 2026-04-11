@@ -1,14 +1,15 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { clearCurrentUser, getCurrentUser } from "../../utils/authStorage.js";
 
 function TopBar({ title = ""}) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
-  const currentUser = JSON.parse(localStorage.getItem("currentUser")) || {};
+  const currentUser = getCurrentUser() || {};
 
   const handleLogout = () => {
-    localStorage.removeItem("currentUser");
+    clearCurrentUser();
     navigate("/");
   };
 
@@ -28,7 +29,7 @@ function TopBar({ title = ""}) {
 
       <div className="flex items-center gap-4 relative">
         <div className="rounded-full bg-[#1e293b] px-5 py-2 text-sm font-semibold text-cyan-400">
-          SWE 363 - SEC 03
+          ICS 202 - SEC 03
         </div>
 
         {/* Profile Circle */}

@@ -22,6 +22,9 @@ import GradingPage from "../pages/instructor/GradingPage.jsx";
 import AnalyticsPage from "../pages/instructor/AnalyticsPage.jsx";
 import PlagiarismPage from "../pages/instructor/PlagiarismPage.jsx";
 
+import PeerReviewsPage from "../pages/student/PeerReviewsPage.jsx";
+import AssignedReviewPage from "../pages/student/AssignedReviewPage.jsx";
+import ReceivedReviewPage from "../pages/student/ReceivedReviewPage.jsx";
 function AppRouter() {
   return (
     <BrowserRouter>
@@ -32,6 +35,15 @@ function AppRouter() {
         <Route path="/labs/:labId" element={<LabWorkspacePage />} />
         <Route path="/history" element={<HistoryPage />} />
         <Route path="/history/:labId" element={<HistoryLabPage />} />
+        <Route path="/peer-review" element={<PeerReviewsPage />} />
+        <Route
+          path="/peer-reviews/assigned/:reviewId"
+          element={<AssignedReviewPage />}
+        />
+        <Route
+          path="/peer-reviews/received/:reviewId"
+          element={<ReceivedReviewPage />}
+        />
         <Route path="/grades" element={<GradesPage />} />
         <Route path="/solutions" element={<ReferenceSolutionsPage />} />
         <Route path="/admin/users" element={<UserManagementPage />} />

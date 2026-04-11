@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "../../components/layout/DashboardLayout";
+import { getCurrentUser } from "../../utils/authStorage.js";
 
 const LABS_KEY     = "labtrack_instructor_labs";
 const COURSES_KEY  = "labtrack_courses";
@@ -100,7 +101,7 @@ export default function DashboardPage() {
   const [data, setData] = useState(null);
 
   useEffect(() => {
-    const user     = readJson("currentUser", {});
+    const user     = getCurrentUser() || {};
     const uid      = user.id || user.email || "guest";
     const progress = getProgress(uid);
     const labs     = getActiveLabs();

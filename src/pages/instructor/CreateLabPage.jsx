@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import InstructorLayout from "../../components/layout/InstructorLayout";
 import TestCasesTab from "./TestCasesTab";
 import SolutionsTab from "./SolutionsTab";
+import { getCurrentUser } from "../../utils/authStorage.js";
 
 const LABS_KEY = "labtrack_instructor_labs";
 const LANGUAGES = ["Python", "C++", "C", "Java", "JavaScript", "Go", "Rust"];
@@ -141,7 +142,7 @@ export default function CreateLabPage() {
       const id = currentLabIdRef.current;
       const existing = stored.find((l) => l.id === id);
       const now = new Date().toISOString();
-      const user = JSON.parse(localStorage.getItem("currentUser") || "{}");
+      const user = getCurrentUser() || {};
 
       const labObj = {
         id,
