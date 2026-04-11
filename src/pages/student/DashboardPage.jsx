@@ -1,175 +1,311 @@
-import DashboardLayout from "../../components/layout/DashboardLayout";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import DashboardLayout from "../../components/layout/DashboardLayout";
 import { getCurrentUser } from "../../utils/authStorage.js";
 
-function DashboardPage() {
-  const currentUser = getCurrentUser() || {};
+const LABS_KEY     = "labtrack_instructor_labs";
+const COURSES_KEY  = "labtrack_courses";
+const PROGRESS_KEY = "labtrack_student_progress";
+
+// ─── Storage helpers ──────────────────────────────────────────────────────────
+function readJson(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch (e) {
+    console.warn(`Failed to read ${key}`, e);
+    return fallback;
+  }
+}
+
+// ─── Data helpers ─────────────────────────────────────────────────────────────
+function getEnrolledCourses(user) {
+  const courses = readJson(COURSES_KEY, []);
+  const uid = user.id || user.email;
+  return courses.filter((c) =>
+    c.sections?.some((s) => s.enrolledStudentIds?.includes(uid))
+  );
+}
+
+function getActiveLabs() {
+  return readJson(LABS_KEY, []).filter((l) => l.status === "active");
+}
+
+function getProgress(uid) {
+  return readJson(PROGRESS_KEY, {})[uid] || {};
+}
+
+function resolveStatus(labId, progress) {
+  return progress[labId]?.status ?? "not_started";
+}
+
+function parseDeadline(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function hoursUntil(deadline) {
+  return (deadline.getTime() - Date.now()) / 3600000;
+}
+
+function fmtDeadline(deadline) {
+  return deadline.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function relativeTime(iso) {
+  if (!iso) return "—";
+  const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (m < 1)   return "Just now";
+  if (m < 60)  return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24)  return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 18) return "Good afternoon";
+  return "Good evening";
+}
+
+// ─── Style tokens ─────────────────────────────────────────────────────────────
+const card   = "#1a2238";
+const border = "#1a2540";
+const muted  = "#8898b3";
+const warn   = "#fbbf24";
+const danger = "#f87171";
+
+function progressBarColor(pct) {
+  if (pct <= 40) return "bg-red-500";
+  if (pct <= 75) return "bg-yellow-400";
+  return "bg-green-500";
+}
+
+function deadlineColor(hrs) {
+  if (hrs < 0)  return danger;
+  if (hrs < 48) return warn;
+  return muted;
+}
+
+function deadlineIcon(hrs) {
+  if (hrs < 0)  return "⚠";
+  if (hrs < 48) return "⏰";
+  return "📅";
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
+export default function DashboardPage() {
   const navigate = useNavigate();
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    const user     = getCurrentUser() || {};
+    const uid      = user.id || user.email || "guest";
+    const progress = getProgress(uid);
+    const labs     = getActiveLabs();
+    const courses  = getEnrolledCourses(user);
+
+    // Sort labs by due date
+    const sortedLabs = [...labs].sort((a, b) => {
+      const da = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
+      const db = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
+      return da - db;
+    });
+
+    // Upcoming: not submitted, due within 72 h or overdue, at most 3
+    const upcoming = sortedLabs
+      .filter((l) => {
+        const s = resolveStatus(l.id, progress);
+        if (s === "submitted" || s === "graded") return false;
+        const d = parseDeadline(l.dueDate);
+        return d ? hoursUntil(d) < 72 : false;
+      })
+      .slice(0, 3);
+
+    // Per-course completion
+    const courseStats = courses.map((c) => {
+      const courseLabs = sortedLabs; // no courseId on labs; show global stats per course card
+      const done  = courseLabs.filter((l) => {
+        const s = resolveStatus(l.id, progress);
+        return s === "submitted" || s === "graded";
+      }).length;
+      return { ...c, total: courseLabs.length, done };
+    });
+
+    // Stats
+    const completed  = labs.filter((l) => { const s = resolveStatus(l.id, progress); return s === "submitted" || s === "graded"; }).length;
+    const inProgress = labs.filter((l) => resolveStatus(l.id, progress) === "in_progress").length;
+    const graded     = labs.filter((l) => resolveStatus(l.id, progress) === "graded");
+    const scores     = graded.map((l) => progress[l.id]?.score).filter((s) => s !== null && s !== undefined);
+    const avgScore   = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
+
+    // Recent activity from progress entries
+    const recent = Object.entries(progress)
+      .filter(([, v]) => v.submittedAt)
+      .map(([labId, v]) => {
+        const lab = labs.find((l) => String(l.id) === String(labId));
+        return { labId, title: lab?.title ?? `Lab ${labId}`, submittedAt: v.submittedAt, status: v.status };
+      })
+      .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt))
+      .slice(0, 4);
+
+    setData({ user, labs: sortedLabs, upcoming, courseStats, completed, inProgress, avgScore, recent, progress, courses });
+  }, []);
+
+  if (!data) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64 text-gray-400">Loading…</div>
+      </DashboardLayout>
+    );
+  }
+
+  const { user, labs, upcoming, courseStats, completed, inProgress, avgScore, recent, progress } = data;
+  const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+
   const stats = [
-    { value: "8", label: "Labs Completed", color: "text-cyan-400" },
-    { value: "2", label: "Pending", color: "text-yellow-400" },
-    { value: "87%", label: "Avg Score", color: "text-green-400" },
-    { value: "3", label: "Reviews due", color: "text-cyan-400" },
+    { value: labs.length,                  label: "Active Labs",   color: "text-cyan-400"   },
+    { value: completed,                    label: "Completed",     color: "text-green-400"  },
+    { value: inProgress,                   label: "In Progress",   color: "text-yellow-400" },
+    { value: avgScore === null ? "—" : `${avgScore}%`, label: "Avg Score", color: "text-green-400" },
   ];
-  const getProgressColor = (progress) => {
-    if (progress <= 60) return "bg-red-500";
-    if (progress <= 80) return "bg-yellow-400";
-    return "bg-green-500";
-  };
-  const activeLabs = [
-    {
-      id: 1,
-      title: "Lab 3: React Components",
-      dueDate: "Due Apr 12",
-      progress: 75,
-      status: "In Progress",
-      route: "/labs",
-    },
-    {
-      id: 2,
-      title: "Lab 4: State and Props",
-      dueDate: "Due Apr 15",
-      progress: 40,
-      status: "Pending Review",
-      route: "/labs",
-    },
-  ];
-  const recentActivities = [
-    {
-      id: 1,
-      text: "Submitted Lab 2: JavaScript Basics",
-      time: "2 hours ago",
-    },
-    {
-      id: 2,
-      text: "Received feedback on Lab 1",
-      time: "Yesterday",
-    },
-    {
-      id: 3,
-      text: "New grade posted for Quiz 1",
-      time: "2 days ago",
-    },
-  ];
-  const today = new Date();
-
-  const formattedDate = today.toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
-  const hour = new Date().getHours();
-
-  let greeting = "Good morning";
-  if (hour >= 12 && hour < 18) greeting = "Good afternoon";
-  if (hour >= 18) greeting = "Good evening";
 
   return (
     <DashboardLayout>
       <div>
+        {/* Greeting */}
         <h1 className="text-3xl font-bold text-white">
-          {greeting}, {currentUser.fullName || "Student"} 👋
+          {greeting()}, {user.fullName || "Student"} 👋
         </h1>
+        <p className="mt-2 text-gray-400">{today}</p>
 
-        <p className="mt-2 text-gray-400">{formattedDate}</p>
-
+        {/* Stats row */}
         <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
-          {stats.map((stat) => (
-            <div
-              key={stat.label}
-              className="rounded-3xl bg-[#1a2238] p-6 shadow-sm"
-            >
-              <h2 className={`text-4xl font-bold ${stat.color}`}>
-                {stat.value}
-              </h2>
-              <p className="mt-2 text-lg text-gray-400">{stat.label}</p>
+          {stats.map((s) => (
+            <div key={s.label} className="rounded-3xl bg-[#1a2238] p-6 shadow-sm">
+              <h2 className={`text-4xl font-bold ${s.color}`}>{s.value}</h2>
+              <p className="mt-2 text-lg text-gray-400">{s.label}</p>
             </div>
           ))}
         </div>
+
         <div className="mt-10 grid grid-cols-1 gap-8 xl:grid-cols-3">
-          {/* Left side - Active Labs */}
-          <div className="xl:col-span-2">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-2xl font-semibold text-white">Active Labs</h2>
-              <button
-                onClick={() => navigate("/labs")}
-                className="text-sm font-medium text-cyan-400 hover:text-cyan-300"
-              >
+
+          {/* Left: Upcoming labs */}
+          <div className="xl:col-span-2 space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-semibold text-white">Upcoming Labs</h2>
+              <button onClick={() => navigate("/labs")} className="text-sm font-medium text-cyan-400 hover:text-cyan-300">
                 View all
               </button>
             </div>
 
-            <div className="space-y-6">
-              {activeLabs.map((lab) => (
-                <div
-                  key={lab.id}
-                  className="rounded-3xl bg-[#1a2238] p-6 shadow-sm"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="text-xl font-semibold text-white">
-                        {lab.title}
-                      </h3>
-                      <p className="mt-1 text-sm text-gray-400">
-                        {lab.dueDate}
-                      </p>
-                    </div>
+            {upcoming.length === 0 ? (
+              <div style={{ background: card, border: `1px solid ${border}`, borderRadius: 20, padding: "32px 24px", textAlign: "center" }}>
+                <div style={{ fontSize: 28, marginBottom: 10 }}>✅</div>
+                <div style={{ fontSize: 14, color: muted }}>No urgent labs — you are all caught up!</div>
+              </div>
+            ) : (
+              upcoming.map((lab) => {
+                const deadline = parseDeadline(lab.dueDate);
+                const hrs      = deadline ? hoursUntil(deadline) : null;
+                const labStatus= resolveStatus(lab.id, progress);
+                const pct      = labStatus === "in_progress" ? 40 : 0;
 
-                    <span className="rounded-full bg-cyan-500/10 px-3 py-1 text-xs font-medium text-cyan-400">
-                      {lab.status}
-                    </span>
-                  </div>
-                  <div className="mt-6">
-                    <div className="mb-2 flex justify-between text-sm text-gray-400">
-                      <span>Progress</span>
-                      <span>{lab.progress}%</span>
+                return (
+                  <div key={lab.id} className="rounded-3xl bg-[#1a2238] p-6 shadow-sm">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h3 className="text-xl font-semibold text-white">{lab.title}</h3>
+                        {deadline && (
+                          <p className="mt-1 text-sm" style={{ color: hrs === null ? muted : deadlineColor(hrs) }}>
+                            {hrs === null ? "" : deadlineIcon(hrs)}{" "}
+                            {hrs !== null && hrs < 0 ? "Overdue" : `Due ${fmtDeadline(deadline)}`}
+                          </p>
+                        )}
+                      </div>
+                      <span className="rounded-full bg-cyan-500/10 px-3 py-1 text-xs font-medium text-cyan-400 capitalize">
+                        {labStatus.replace("_", " ")}
+                      </span>
                     </div>
+                    {pct > 0 && (
+                      <div className="mt-6">
+                        <div className="mb-2 flex justify-between text-sm text-gray-400">
+                          <span>Progress</span>
+                          <span>{pct}%</span>
+                        </div>
+                        <div className="h-2 w-full rounded-full bg-[#0f172a]">
+                          <div className={`h-2 rounded-full ${progressBarColor(pct)}`} style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    )}
+                    <div className="mt-6">
+                      <button
+                        onClick={() => navigate(`/labs/${lab.id}`)}
+                        className="rounded-full bg-cyan-400 px-5 py-2 text-sm font-semibold text-[#0b1220] hover:bg-cyan-300"
+                      >
+                        {labStatus === "in_progress" ? "Continue Lab" : "Start Lab"}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
 
-                    <div className="h-2 w-full rounded-full bg-[#0f172a]">
-                      <div
-                        className={`h-2 rounded-full ${getProgressColor(lab.progress)}`}
-                        style={{ width: `${lab.progress}%` }}
-                      ></div>
+            {/* Enrolled courses */}
+            {courseStats.length > 0 && (
+              <>
+                <h2 className="text-2xl font-semibold text-white pt-2">My Courses</h2>
+                {courseStats.map((c) => {
+                  const pct = c.total > 0 ? Math.round((c.done / c.total) * 100) : 0;
+                  return (
+                    <div key={c.id} className="rounded-3xl bg-[#1a2238] p-6 shadow-sm">
+                      <div className="flex items-start justify-between mb-4">
+                        <div>
+                          <div className="text-lg font-semibold text-white">{c.courseCode} — {c.name}</div>
+                          <div className="text-sm text-gray-400 mt-1">{c.department} · {c.creditHours} credit hrs</div>
+                        </div>
+                        <span className="text-sm font-bold text-cyan-400">{c.done}/{c.total} labs</span>
+                      </div>
+                      <div className="mb-2 flex justify-between text-sm text-gray-400">
+                        <span>Completion</span>
+                        <span>{pct}%</span>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-[#0f172a]">
+                        <div className={`h-2 rounded-full ${progressBarColor(pct)}`} style={{ width: `${pct}%` }} />
+                      </div>
                     </div>
-                  </div>
-                  <div className="mt-6">
-                    <button
-                      onClick={() => navigate(lab.route)}
-                      className="rounded-full bg-cyan-400 px-5 py-2 text-sm font-semibold text-[#0b1220] hover:bg-cyan-300"
-                    >
-                      Open Lab
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  );
+                })}
+              </>
+            )}
           </div>
 
-          {/* Right side - Recent Activity */}
+          {/* Right: Recent activity */}
           <div>
-            <h2 className="mb-4 text-2xl font-semibold text-white">
-              Recent Activity
-            </h2>
-
-            <div className="space-y-4">
-              {recentActivities.map((activity) => (
-                <div key={activity.id} className="flex items-start gap-3">
-                  <div className="mt-2 h-3 w-3 rounded-full bg-cyan-400"></div>
-
-                  <div>
-                    <p className="text-lg font-medium text-white">
-                      {activity.text}
-                    </p>
-                    <p className="text-sm text-gray-400">{activity.time}</p>
+            <h2 className="mb-4 text-2xl font-semibold text-white">Recent Activity</h2>
+            {recent.length === 0 ? (
+              <div style={{ color: muted, fontSize: 13 }}>No activity yet — start a lab!</div>
+            ) : (
+              <div className="space-y-4">
+                {recent.map((a) => (
+                  <div key={a.labId} className="flex items-start gap-3">
+                    <div className="mt-2 h-3 w-3 rounded-full bg-cyan-400 shrink-0" />
+                    <div>
+                      <p className="text-base font-medium text-white">
+                        {a.status === "submitted" ? "Submitted" : "Updated"} {a.title}
+                      </p>
+                      <p className="text-sm text-gray-400">{relativeTime(a.submittedAt)}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
     </DashboardLayout>
   );
 }
-
-export default DashboardPage;

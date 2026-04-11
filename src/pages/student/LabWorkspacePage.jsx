@@ -384,6 +384,10 @@ export default function LabWorkspacePage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [filePendingDelete, setFilePendingDelete] = useState(null);
   const [submitted, setSubmitted] = useState(false);
+  const [showVersionModal, setShowVersionModal] = useState(false);
+  const [versionDesc, setVersionDesc] = useState("");
+  const [versionDescErr, setVersionDescErr] = useState("");
+  const [versionToast, setVersionToast] = useState("");
   const [descCollapsed, setDescCollapsed] = useState(false);
   const [isAddingPage, setIsAddingPage] = useState(false);
   const [newPageName, setNewPageName] = useState("");
@@ -747,9 +751,75 @@ export default function LabWorkspacePage() {
     consoleRef.current.setSelectionRange(caret, caret);
   }, [consolePendingRun, consoleTranscript, consolePromptInput]);
 
+  const handleSaveVersion = () => {
+    const desc = versionDesc.trim();
+    if (desc.length < 5) {
+      setVersionDescErr("Description must be at least 5 characters.");
+      return;
+    }
+    setVersionDescErr("");
+
+    const VERSIONS_KEY = "labtrack_versions";
+    try {
+      const user = JSON.parse(localStorage.getItem("currentUser") || "{}");
+      const uid  = user.id || user.email || "guest";
+      const all  = JSON.parse(localStorage.getItem(VERSIONS_KEY) || "{}");
+      const labVersions = all[selectedLab.id] || [];
+
+      const currentCode = fileContents[activeFile] ?? "";
+      if (labVersions.length > 0 && labVersions[0].code === currentCode) {
+        setVersionDescErr("No changes since the last saved version.");
+        return;
+      }
+      if (labVersions.length >= 50) {
+        labVersions.pop();
+      }
+
+      const vNum = labVersions.length + 1;
+      const passed2 = testResults.filter((r) => r.status === "pass").length;
+      const total2  = testResults.filter((r) => r.status !== "hidden").length;
+      const newVersion = {
+        id: `v${vNum}`,
+        labId: selectedLab.id,
+        uid,
+        label: `v${vNum} — ${desc}`,
+        timestamp: new Date().toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
+        status: "saved",
+        testsPassed: passed2,
+        totalTests: total2,
+        score: null,
+        code: currentCode,
+      };
+      all[selectedLab.id] = [newVersion, ...labVersions];
+      localStorage.setItem(VERSIONS_KEY, JSON.stringify(all));
+
+      setShowVersionModal(false);
+      setVersionDesc("");
+      setVersionToast(`Version v${vNum} saved successfully`);
+      setTimeout(() => setVersionToast(""), 3000);
+    } catch (e) {
+      console.warn("Could not save version", e);
+      setVersionDescErr("Failed to save version. Please try again.");
+    }
+  };
+
   const handleConfirmSubmit = () => {
     setShowSubmit(false);
     setSubmitted(true);
+    // Persist submission status so DashboardPage / LabsPage can read it
+    try {
+      const user = JSON.parse(localStorage.getItem("currentUser") || "{}");
+      const key = "labtrack_student_progress";
+      const all = JSON.parse(localStorage.getItem(key) || "{}");
+      const uid = user.id || user.email || "guest";
+      all[uid] = all[uid] || {};
+      all[uid][selectedLab.id] = {
+        status: "submitted",
+        submittedAt: new Date().toISOString(),
+        score: null,
+      };
+      localStorage.setItem(key, JSON.stringify(all));
+    } catch (e) { console.warn("Could not persist submission status", e); }
     setTimeout(() => navigate("/dashboard"), 2200);
   };
 
@@ -1492,6 +1562,22 @@ export default function LabWorkspacePage() {
                 {isRunning ? "Running…" : "▶  Run"}
               </button>
               <button
+                onClick={() => { setVersionDesc(""); setVersionDescErr(""); setShowVersionModal(true); }}
+                style={{
+                  flex: 1,
+                  padding: "10px 0",
+                  background: "transparent",
+                  border: `1px solid ${border}`,
+                  borderRadius: 8,
+                  color: muted,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                💾 Save Version
+              </button>
+              <button
                 onClick={() => setShowSubmit(true)}
                 style={{
                   flex: 1,
@@ -1511,6 +1597,80 @@ export default function LabWorkspacePage() {
           </div>
         </main>
       </div>
+
+      {/* ── Version toast ── */}
+      {versionToast && (
+        <div style={{
+          position: "fixed", bottom: 32, right: 32,
+          background: "#16a34a", color: "#fff",
+          borderRadius: 10, padding: "12px 20px",
+          fontSize: 13, fontWeight: 600, zIndex: 2000,
+          boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+        }}>
+          ✓ {versionToast}
+        </div>
+      )}
+
+      {/* ── Save Version Modal ── */}
+      {showVersionModal && (
+        <div style={{
+          position: "fixed", inset: 0,
+          background: "rgba(0,0,0,0.7)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          zIndex: 1000,
+        }}>
+          <div style={{
+            background: bg2, borderRadius: 16, padding: 32, width: 440,
+            border: `1px solid ${border}`,
+          }}>
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: "#e2e8f0", marginTop: 0, marginBottom: 8 }}>
+              Save Version
+            </h2>
+            <p style={{ fontSize: 13, color: muted, marginBottom: 20 }}>
+              Add a short description so you can identify this snapshot later.
+            </p>
+            <input
+              autoFocus
+              type="text"
+              value={versionDesc}
+              onChange={(e) => { setVersionDesc(e.target.value); setVersionDescErr(""); }}
+              onKeyDown={(e) => { if (e.key === "Enter") { handleSaveVersion(); } else if (e.key === "Escape") { setShowVersionModal(false); } }}
+              placeholder="e.g. Fixed insert method"
+              style={{
+                width: "100%", boxSizing: "border-box",
+                background: "#0b1424", border: `1px solid ${versionDescErr ? "#f87171" : border}`,
+                borderRadius: 8, color: "#e2e8f0", fontSize: 13,
+                padding: "10px 14px", outline: "none", marginBottom: 6,
+              }}
+            />
+            {versionDescErr && (
+              <p style={{ fontSize: 12, color: "#f87171", margin: "0 0 14px" }}>{versionDescErr}</p>
+            )}
+            <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+              <button
+                onClick={() => setShowVersionModal(false)}
+                style={{
+                  flex: 1, padding: "10px 0", background: "transparent",
+                  border: `1px solid ${border}`, borderRadius: 8,
+                  color: muted, fontSize: 13, fontWeight: 600, cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveVersion}
+                style={{
+                  flex: 1, padding: "10px 0", background: "#16a34a",
+                  border: "none", borderRadius: 8,
+                  color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer",
+                }}
+              >
+                Save Version
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Delete Confirmation Modal ── */}
       {showDeleteConfirm && (
