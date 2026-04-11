@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-
+import DashboardLayout from "../../components/layout/DashboardLayout";
 function GradesPage() {
     const [selectedCourse, setSelectedCourse] = useState("ICS 202 - SEC 03");
 
@@ -145,6 +145,7 @@ function GradesPage() {
     };
 
     return (
+        <DashboardLayout>
         <div className="min-h-screen bg-[#050b18] text-white">
             <div className="mx-auto max-w-7xl px-6 py-6">
                 {/* Header */}
@@ -333,6 +334,7 @@ function GradesPage() {
                 </div>
             </div>
         </div>
+        </DashboardLayout>
     );
 }
 
