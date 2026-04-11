@@ -58,7 +58,7 @@ function LoginPage() {
        localStorage.setItem("currentUser", JSON.stringify(user));
 
       if (user.role === "instructor") {
-        navigate("/admin/users");
+        navigate("/instructor/labs");
       } else {
         navigate("/dashboard");
       }
