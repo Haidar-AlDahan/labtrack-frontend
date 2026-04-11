@@ -93,16 +93,40 @@ export default function ReceivedReviewPage() {
             </div>
           </div>
 
-          {/* Center — your code */}
+          {/* Center — your code with inline comments */}
           <div className="xl:col-span-5 bg-[#111a2e] border border-white/5 rounded-2xl overflow-hidden">
             <div className="border-b border-white/5 px-5 py-4 flex items-center justify-between">
               <h2 className="text-xl font-bold text-white">Your Submission</h2>
               <span className="text-sm text-slate-400">{activeFile}</span>
             </div>
             <div className="p-5">
-              <pre className="bg-[#09111f] rounded-xl p-5 overflow-x-auto text-sm text-slate-200 leading-7 font-mono border border-cyan-500/10 min-h-[550px] whitespace-pre-wrap">
-                {reviewData.fileContents?.[activeFile] || ""}
-              </pre>
+              <div className="bg-[#09111f] rounded-xl border border-cyan-500/10 min-h-[550px] overflow-x-auto font-mono text-sm">
+                {(reviewData.fileContents?.[activeFile] || "").split("\n").map((text, i) => {
+                  const lineNum = i + 1;
+                  const reviewLineComments = reviewData.review?.lineComments || {};
+                  const hasComment = Boolean(reviewLineComments[i]);
+                  return (
+                    <div key={lineNum}>
+                      <div className={`flex leading-7 ${hasComment ? "bg-yellow-500/10" : "hover:bg-white/5"}`}>
+                        <span className="select-none w-10 shrink-0 text-right pr-3 text-slate-600 border-r border-white/5 py-0.5">
+                          {lineNum}
+                        </span>
+                        <span className="flex-1 px-4 py-0.5 text-slate-200 whitespace-pre">
+                          {text || " "}
+                        </span>
+                        {hasComment && (
+                          <span className="shrink-0 pr-3 py-0.5 text-yellow-400 text-xs self-center">💬</span>
+                        )}
+                      </div>
+                      {hasComment && (
+                        <div className="bg-yellow-500/10 border-l-2 border-yellow-400 mx-4 mb-1 px-3 py-2 rounded-r text-xs text-yellow-200">
+                          {reviewLineComments[i]}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
