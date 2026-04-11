@@ -9,6 +9,7 @@ import CourseManagementPage from "../pages/admin/CourseManagementPage.jsx";
 import DepartmentSettingsPage from "../pages/admin/DepartmentSettingsPage.jsx";
 import SystemSettingsPage from "../pages/admin/SystemSettingsPage.jsx";
 import SystemMonitorPage from "../pages/admin/SystemMonitorPage.jsx";
+import AnalyticsDashboardPage from "../pages/admin/AnalyticsDashboardPage.jsx";
 import LabsManagementPage from "../pages/instructor/LabsManagementPage.jsx";
 import CreateLabPage from "../pages/instructor/CreateLabPage.jsx";
 import SubmissionsPage from "../pages/instructor/SubmissionsPage.jsx";
@@ -30,6 +31,7 @@ function AppRouter() {
         <Route path="/admin/departments" element={<DepartmentSettingsPage />} />
         <Route path="/admin/settings" element={<SystemSettingsPage />} />
         <Route path="/admin/monitor" element={<SystemMonitorPage />} />
+        <Route path="/admin/analytics" element={<AnalyticsDashboardPage />} />
         {/* Instructor routes */}
         <Route path="/instructor/labs" element={<LabsManagementPage />} />
         <Route path="/instructor/labs/create" element={<CreateLabPage />} />
