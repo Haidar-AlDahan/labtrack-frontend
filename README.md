@@ -61,7 +61,19 @@ main.jsx
 - Muhannad AlMelaifi  
 - Hassan Al Henedi  
 - Saif AlSadah  
+---
 
+## Work Distribution
+
+The work was divided among team members based on the **Functional Requirements document** and the provided **Figma design**.  
+Each member was responsible for implementing specific features and pages aligned with the system requirements and UI structure.
+
+---
+
+## Contribution Note
+
+Some of Haidar AlDahan’s commits were made using a different GitHub email (`haider.r.aldahan@gmail.com`).  
+As a result, part of the contribution history may not be accurately reflected under the main account.
 ---
 
 ## Notes
